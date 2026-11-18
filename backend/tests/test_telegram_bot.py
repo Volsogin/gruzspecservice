@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from sqlalchemy import select
 
-from app.db.models import Lead, Operator
+from app.db.models import ClientChannel, Lead, Operator
 from app.services.telegram_bot import TelegramBot
 from tests.conftest import OPERATOR_CHAT, Env, lead_payload
 
@@ -226,45 +226,34 @@ async def test_public_settings_expose_bot_link(env: Env) -> None:
     assert data["telegram_bot"] == {"username": "test_bot", "url": "https://t.me/test_bot"}
 
 
-async def test_find_lead_by_typed_phone_and_number(env: Env) -> None:
+async def test_find_leads_by_typed_phone(env: Env) -> None:
     lead = await _lead(env)  # phone +79271234567
+    await _lead(env, phone="+79270000055")  # someone else's lead must not show up
     bot = _bot(env)
     await bot.handle_update(_msg(CLIENT, "🔎 Найти заявку"))
     assert "Напишите телефон" in env.tg.to(CLIENT)[-1]["text"]
     await bot.handle_update(_msg(CLIENT, "8 927 123-45-67"))
-    assert "+7 *** *** 45 67" in env.tg.to(CLIENT)[-1]["text"]
-    number = lead["number"].split("-")[1]
-    await bot.handle_update(_msg(CLIENT, f"гс-{number}"))  # any reasonable spelling of the number
     texts = [m["text"] for m in env.tg.to(CLIENT)]
-    assert any(f"Нашёл заявку {lead['number']}" in t for t in texts)
+    assert any(f"Нашёл заявки: {lead['number']}" in t for t in texts)
     assert lead["number"] in env.tg.to(CLIENT)[-1]["text"]  # the list with buttons follows
+    async with env.container.session_factory() as s:
+        bound = (await s.scalars(select(ClientChannel).where(ClientChannel.address == str(CLIENT)))).all()
+        assert len(bound) == 1
     await env.client.post(f"/api/v1/admin/leads/{lead['id']}/status", json={"status": "accepted"}, headers=env.admin)
     await env.drain()
     assert any("Принята мастером" in m["text"] for m in env.tg.to(CLIENT))
 
 
-async def test_find_lead_requires_matching_pair(env: Env) -> None:
-    lead = await _lead(env)
-    other = await _lead(env, phone="+79270000055")
-    bot = _bot(env)
-    await bot.handle_update(_msg(CLIENT, lead["number"]))  # number without a phone first
-    assert "Сначала напишите телефон" in env.tg.to(CLIENT)[-1]["text"]
-    await bot.handle_update(_msg(CLIENT, "+79271234567"))
-    await bot.handle_update(_msg(CLIENT, other["number"]))  # someone else's lead number
-    assert "Не нашёл заявку" in env.tg.to(CLIENT)[-1]["text"]
-    await bot.handle_update(_msg(CLIENT, "GS-999999"))  # non-existent: the very same answer
-    assert "Не нашёл заявку" in env.tg.to(CLIENT)[-1]["text"]
-    await bot.handle_update(_msg(CLIENT, "📋 Мои заявки"))
-    assert "Пока не вижу ваших заявок" in env.tg.to(CLIENT)[-1]["text"]
+async def test_find_by_unknown_phone(env: Env) -> None:
+    await _bot(env).handle_update(_msg(CLIENT, "+7 999 111-22-33"))
+    assert "не нашёл" in env.tg.to(CLIENT)[-1]["text"]
 
 
-async def test_find_lead_is_rate_limited(env: Env) -> None:
-    await _lead(env)
+async def test_find_by_phone_is_rate_limited(env: Env) -> None:
     bot = _bot(env)
-    await bot.handle_update(_msg(CLIENT, "+79271234567"))
     for n in range(6):
-        await bot.handle_update(_msg(CLIENT, f"GS-{900000 + n}"))
-    await bot.handle_update(_msg(CLIENT, "GS-900099"))
+        await bot.handle_update(_msg(CLIENT, f"+7999000000{n}"))
+    await bot.handle_update(_msg(CLIENT, "+79990000009"))
     assert "Слишком много попыток" in env.tg.to(CLIENT)[-1]["text"]
 
 

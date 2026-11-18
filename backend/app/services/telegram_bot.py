@@ -19,7 +19,6 @@ from __future__ import annotations
 import asyncio
 import html
 import logging
-import re
 import uuid
 from datetime import timedelta
 from typing import Any
@@ -50,11 +49,7 @@ FIND_LEAD = "🔎 Найти заявку"
 MY_LEADS = "📋 Мои заявки"
 CLIENT_KEYBOARD = [[{"text": FIND_LEAD}, {"text": MY_LEADS}]]
 FIND_ATTEMPTS_PER_HOUR = 6
-_LEAD_NUMBER = re.compile(r"^\s*(?:gs|гс|№)?\s*[-–—]?\s*(\d{3,7})\s*$", re.IGNORECASE)
-ASK_PHONE = (
-    "Напишите телефон, который указывали в заявке, например <code>+7 900 123-45-67</code>.\n"
-    "Потом спрошу номер заявки — он был на экране после отправки и в письме (например, GS-1003)."
-)
+ASK_PHONE = "Напишите телефон, который указывали в заявке, например <code>+7 900 123-45-67</code>."
 CLIENT_CANCELLABLE = frozenset({LeadStatus.NEW.value, LeadStatus.ACCEPTED.value})
 AUTO_BIND_DAYS = 30
 MAX_LISTED = 5
@@ -62,7 +57,7 @@ MAX_LISTED = 5
 CLIENT_HELP = (
     "Здравствуйте! Это бот грузового автосервиса <b>ГРУЗСПЕЦСЕРВИС</b>.\n\n"
     "Здесь можно следить за статусом заявки, задать вопрос оператору или отменить заявку.\n"
-    "Нажмите «🔎 Найти заявку» — найду её по телефону и номеру заявки.\n\n"
+    "Нажмите «🔎 Найти заявку» и напишите телефон из заявки — найду ваши заявки.\n\n"
     "Оставить новую заявку можно на сайте."
 )
 OPERATOR_HELP = (
@@ -410,7 +405,7 @@ class TelegramBot:
         if not leads:
             await self._send(
                 chat_id,
-                "Пока не вижу ваших заявок. Нажмите «🔎 Найти заявку» — найду по телефону и номеру заявки.",
+                "Пока не вижу ваших заявок. Нажмите «🔎 Найти заявку» и напишите телефон из заявки.",
                 reply_keyboard=CLIENT_KEYBOARD,
             )
             return
@@ -445,8 +440,11 @@ class TelegramBot:
         except InvalidPhone:
             return None
 
-    async def _find_lead(self, chat_id: int, user: dict[str, Any], number: str) -> None:
-        """Typed phone + lead number → bind. Rate-limited; the same answer for «no such lead» and «wrong phone»."""
+    async def _find_by_phone(self, chat_id: int, user: dict[str, Any], phone: str) -> None:
+        """Typed phone → subscribe to all active leads with it (team decision: phone alone is enough).
+
+        Rate-limited per chat so the bot can't be used to enumerate other people's numbers.
+        """
         try:
             self.limiter.hit(f"tgfind:{chat_id}", FIND_ATTEMPTS_PER_HOUR, 3600)
         except RateLimited:
@@ -454,48 +452,36 @@ class TelegramBot:
             return
         async with self.session_factory() as session:
             client = await self._client(session, chat_id, user)
-            lead = await session.scalar(select(Lead).where(Lead.number == number, Lead.phone == client.pending_phone))
-            if lead is None:
-                await session.commit()
-                logger.info("telegram_find_lead_miss")
-                await self._send(
-                    chat_id,
-                    f"Не нашёл заявку {html.escape(number)} с этим телефоном. Проверьте номер заявки "
-                    "или нажмите «🔎 Найти заявку», чтобы ввести телефон заново.",
+            client.phone = phone
+            leads = (
+                await session.scalars(
+                    select(Lead).where(Lead.phone == phone, Lead.status.not_in([s.value for s in TERMINAL]))
                 )
-                return
-            await self._bind(session, lead, chat_id)
-            client.phone, client.pending_phone = client.pending_phone, None
+            ).all()
+            for lead in leads:
+                await self._bind(session, lead, chat_id)
             await session.commit()
-        logger.info("telegram_bound", extra={"lead_number": number, "via": "phone_and_number"})
+            numbers = [lead.number for lead in leads]
+        logger.info("telegram_bound", extra={"via": "phone", "count": len(numbers)})
+        if not numbers:
+            await self._send(
+                chat_id,
+                f"Активных заявок на номер {html.escape(mask_phone(phone))} не нашёл. Проверьте номер или оставьте "
+                "заявку на сайте — статус будет приходить сюда.",
+                reply_keyboard=CLIENT_KEYBOARD,
+            )
+            return
         await self._send(
             chat_id,
-            f"Нашёл заявку {html.escape(number)} ✅ Статусы будут приходить сюда.",
+            f"Нашёл заявки: {', '.join(numbers)} ✅ Статусы будут приходить сюда.",
             reply_keyboard=CLIENT_KEYBOARD,
         )
         await self._list_client_leads(chat_id)
 
     async def _client_text(self, chat_id: int, user: dict[str, Any], text: str) -> None:
-        """Free text from a client: phone / lead number for «Найти заявку», otherwise a question to operators."""
+        """Free text from a client: a phone for «Найти заявку», otherwise a question to operators."""
         if phone := self._typed_phone(text):
-            async with self.session_factory() as session:
-                client = await self._client(session, chat_id, user)
-                client.pending_phone = phone
-                await session.commit()
-            await self._send(
-                chat_id,
-                f"Телефон {html.escape(mask_phone(phone))} ✅ Теперь напишите номер заявки, "
-                "например <code>GS-1003</code>.",
-            )
-            return
-        if match := _LEAD_NUMBER.match(text):
-            async with self.session_factory() as session:
-                pending = (await self._client(session, chat_id, user)).pending_phone
-                await session.commit()
-            if pending is None:
-                await self._send(chat_id, "Сначала напишите телефон из заявки, затем её номер. " + ASK_PHONE)
-            else:
-                await self._find_lead(chat_id, user, f"GS-{match.group(1)}")
+            await self._find_by_phone(chat_id, user, phone)
             return
         async with self.session_factory() as session:
             client = await self._client(session, chat_id, user)

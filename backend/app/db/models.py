@@ -416,11 +416,7 @@ class TgRelay(Base):
 
 
 class TgClient(Base):
-    """A client who talks to the bot directly.
-
-    Finding leads by a typed phone needs the lead number too (phone alone is not proof of ownership);
-    `pending_phone` holds the typed phone while the bot waits for the lead number.
-    """
+    """A client who talks to the bot directly (found their leads by link, @username or phone)."""
 
     __tablename__ = "tg_clients"
 
@@ -430,6 +426,5 @@ class TgClient(Base):
     phone: Mapped[str | None] = mapped_column(String(16), index=True)
     phone_verified_at: Mapped[datetime | None] = mapped_column()
     pending_question_lead_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
-    pending_phone: Mapped[str | None] = mapped_column(String(16))
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
