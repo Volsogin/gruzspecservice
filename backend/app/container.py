@@ -97,7 +97,11 @@ def build_container(
 
     if telegram_client is _UNSET:
         tg: TelegramClient | None = (
-            TelegramClient(settings.telegram_bot_token.get_secret_value(), settings.telegram_api_base)
+            TelegramClient(
+                settings.telegram_bot_token.get_secret_value(),
+                settings.telegram_api_base,
+                proxy=settings.telegram_proxy_url,
+            )
             if settings.telegram_bot_token
             else None
         )

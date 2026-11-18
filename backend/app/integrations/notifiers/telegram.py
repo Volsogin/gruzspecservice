@@ -42,9 +42,12 @@ class TelegramClient:
         base_url: str = "https://api.telegram.org",
         timeout: float = 15.0,
         transport: httpx.AsyncBaseTransport | None = None,
+        proxy: str | None = None,
     ) -> None:
         self._base = f"{base_url.rstrip('/')}/bot{token}"
-        self._http = httpx.AsyncClient(timeout=timeout, transport=transport)
+        # Proxy applies to Telegram only (http://, https:// or socks5:// e.g. a local v2rayN/xray port);
+        # trust_env=False so a global HTTP(S)_PROXY doesn't silently change the route.
+        self._http = httpx.AsyncClient(timeout=timeout, transport=transport, proxy=proxy, trust_env=False)
 
     async def aclose(self) -> None:
         await self._http.aclose()

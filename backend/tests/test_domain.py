@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from app.core.config import Settings
 from app.core.errors import ValidationFailed
 from app.core.logging import mask_pii
 from app.core.security import FormTokenError, FormTokenSigner
@@ -18,6 +19,7 @@ from app.domain.statuses import InvalidTransition, LeadStatus, allowed_transitio
 from app.domain.topics import Topic, asks_for_operator, detect_topic
 from app.domain.validation import LeadValidator
 from app.domain.worktime import work_status
+from app.integrations.notifiers.telegram import TelegramClient
 
 
 @pytest.mark.parametrize(
@@ -203,3 +205,10 @@ class TestLeadValidator:
             self.v.validate({"lead_type": "callback", "website": "http://spam"})
         with pytest.raises(ValidationFailed):
             self.v.validate({"lead_type": "chat_handoff"})
+
+
+def test_telegram_proxy_setting() -> None:
+    assert Settings(_env_file=None, telegram_proxy_url="").telegram_proxy_url is None
+    s = Settings(_env_file=None, telegram_proxy_url="socks5://127.0.0.1:10808")
+    client = TelegramClient("123:X", proxy=s.telegram_proxy_url)  # constructs with SOCKS support installed
+    assert client._http is not None

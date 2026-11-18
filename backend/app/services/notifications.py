@@ -26,7 +26,7 @@ from app.domain.statuses import (
     allowed_transitions,
     status_label,
 )
-from app.integrations.notifiers.base import InlineButton
+from app.integrations.notifiers.base import InlineButton, telegram_link
 
 # Outbox kinds
 OPERATOR_LEAD_CREATED = "operator.lead_created"
@@ -174,7 +174,7 @@ def render_operator_lead(lead: Lead, settings: Settings, *, html_mode: bool) -> 
     if lead.lat is not None and lead.lon is not None:
         url = dgis_point_url(lead.lat, lead.lon)
         where = lead.address or f"{lead.lat:.5f}, {lead.lon:.5f}"
-        link = f'<a href="{_e(url)}">открыть в 2ГИС</a>' if html_mode else url
+        link = telegram_link(url, "открыть в 2ГИС") if html_mode else url
         zone = {"inside": "в зоне 30 минут", "region": "по области", "outside": "вне зоны"}.get(
             lead.dispatch_zone or "", ""
         )
@@ -194,7 +194,7 @@ def render_operator_lead(lead: Lead, settings: Settings, *, html_mode: bool) -> 
         base = settings.api_base_url.rstrip("/") + settings.media_url_prefix
         links = [f"{base}/{a.original_key}" for a in lead.attachments]
         if html_mode:
-            out.append("Фото: " + ", ".join(f'<a href="{_e(u)}">{i}</a>' for i, u in enumerate(links, 1)))
+            out.append("Фото: " + ", ".join(telegram_link(u, str(i)) for i, u in enumerate(links, 1)))
         else:
             out.append("Фото:\n" + "\n".join(links))
     transcript = (lead.details or {}).get("transcript")
@@ -237,7 +237,8 @@ def render_client_status(
         text = (
             f"<b>{_e(subject)}</b>"
             + (f"\n{_e(comment)}" if comment else "")
-            + f'\n\n<a href="{_e(tracking)}">Открыть заявку</a>'
+            + "\n\n"
+            + telegram_link(tracking, "Открыть заявку")
         )
     else:
         text = "\n".join(

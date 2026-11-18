@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import html
+import ipaddress
 import logging
 from dataclasses import dataclass, field
 from typing import Protocol
+from urllib.parse import urlsplit
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,28 @@ class OutgoingMessage:
 @dataclass(frozen=True)
 class SendResult:
     external_id: str | None = None
+
+
+_LOCAL_SUFFIXES = (".local", ".localhost", ".test", ".internal", ".lan")
+
+
+def is_public_url(url: str) -> bool:
+    """Telegram rejects buttons/links to localhost and private hosts ("Wrong HTTP URL")."""
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower()
+    if parts.scheme not in ("http", "https") or not host:
+        return False
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return "." in host and host != "localhost" and not host.endswith(_LOCAL_SUFFIXES)
+    return ip.is_global
+
+
+def telegram_link(url: str, title: str) -> str:
+    """HTML link if Telegram will accept it, otherwise the bare URL as text (dev on localhost)."""
+    escaped = html.escape(url, quote=True)
+    return f'<a href="{escaped}">{html.escape(title, quote=False)}</a>' if is_public_url(url) else escaped
 
 
 class SendError(Exception):

@@ -29,6 +29,8 @@ services:
       FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
     ports:
       - "${API_PORT:-8000}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # lets TELEGRAM_PROXY_URL point at a proxy on the host
     volumes:
       - appdata:/data   # uploads and dev e-mails: named volume, never inside the source tree
     depends_on:

@@ -143,6 +143,13 @@ docker run --rm hello-world
    `https://api.telegram.org/bot<токен>/getUpdates` → `message.chat.id` (отрицательное число) → `OPERATOR_TG_CHAT_ID`.
 3. Перезапустите API. Бот работает через long polling (`TELEGRAM_MODE=polling`), публичный URL не нужен.
 
+**Если Telegram недоступен с сервера** — задайте `TELEGRAM_PROXY_URL`: прокси используется только для
+Telegram (2ГИС, OpenRouter и почта идут напрямую). Для v2rayN/xray на той же машине:
+`http://127.0.0.1:10809` (HTTP) или `socks5://127.0.0.1:10808` (SOCKS5). В Docker `127.0.0.1` — это сам
+контейнер: укажите `http://host.docker.internal:10809`, добавьте в сервис `api` строку
+`extra_hosts: ["host.docker.internal:host-gateway"]` и включите в v2rayN «разрешить подключения из локальной сети».
+Проверка: `curl -x http://127.0.0.1:10809 -s -o /dev/null -w "%{http_code}\n" https://api.telegram.org` → `302`.
+
 ### Координаты СТО: `make geocode-sto`
 В seed сейчас **плейсхолдер — центр Саратова** (`address.coordinates_source` об этом говорит). С ключом 2ГИС:
 

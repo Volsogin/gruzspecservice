@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import select
 
 from app.db.models import ClientChannel, Lead
+from app.integrations.notifiers.base import is_public_url, telegram_link
 from tests.conftest import OPERATOR_CHAT, Env, lead_payload
 
 
@@ -186,3 +187,35 @@ async def test_telegram_username_stored_for_operators_only(env: Env) -> None:
     await env.drain()
     assert any("@ivan_driver" in m["text"] for m in env.tg.to(OPERATOR_CHAT))
     assert lead["number"]
+
+
+def test_public_url_detection() -> None:
+    assert is_public_url("https://gruzspec.ru/order/x")
+    for url in [
+        "http://localhost:5173/order/x",
+        "http://127.0.0.1:8000/a",
+        "http://192.168.1.5/a",
+        "https://site.test/x",
+    ]:
+        assert not is_public_url(url), url
+    assert telegram_link("http://localhost:5173/o", "Открыть") == "http://localhost:5173/o"
+    assert telegram_link("https://gruzspec.ru/o", "Открыть") == '<a href="https://gruzspec.ru/o">Открыть</a>'
+
+
+async def test_bind_reply_without_url_button_on_localhost(env: Env) -> None:
+    """Telegram rejects localhost URLs in buttons: in dev the link goes as text instead."""
+    lead = await _create(env)
+    bot = env.container.telegram_bot
+    assert bot is not None
+    await bot.handle_update(
+        {
+            "update_id": 7,
+            "message": {
+                "message_id": 1,
+                "chat": {"id": 4242, "type": "private"},
+                "text": f"/start {lead['public_token']}",
+            },
+        }
+    )
+    reply = env.tg.to(4242)[-1]
+    assert reply["buttons"] == [] and lead["tracking_url"] in reply["text"]

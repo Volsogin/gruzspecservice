@@ -19,7 +19,7 @@ from app.core.config import Settings
 from app.core.errors import AppError
 from app.db.models import ChatMessage, ClientChannel, Lead
 from app.domain.statuses import STATUS_LABELS, LeadStatus, status_label
-from app.integrations.notifiers.base import InlineButton, SendError
+from app.integrations.notifiers.base import InlineButton, SendError, is_public_url
 from app.integrations.notifiers.telegram import TelegramClient
 from app.services.chat.live import LiveChatHub
 from app.services.lead_status import change_status
@@ -95,12 +95,14 @@ class TelegramBot:
             number, status = lead.number, lead.status
             tracking = self.settings.tracking_url(lead.public_token)
         logger.info("telegram_bound", extra={"lead_number": number})
-        await self.client.send_message(
-            chat_id,
+        text = (
             f"Готово! Будем присылать сюда статус заявки <b>{html.escape(number)}</b>.\n"
-            f"Сейчас: {html.escape(status_label(status))}.",
-            buttons=[[InlineButton("Открыть заявку", url=tracking)]],
+            f"Сейчас: {html.escape(status_label(status))}."
         )
+        if is_public_url(tracking):
+            await self.client.send_message(chat_id, text, buttons=[[InlineButton("Открыть заявку", url=tracking)]])
+        else:  # dev: Telegram rejects localhost URLs in buttons
+            await self.client.send_message(chat_id, f"{text}\nЗаявка: {html.escape(tracking)}")
 
     async def _operator_reply(self, reply_to_message_id: int, text: str, sender: dict[str, Any]) -> None:
         async with self.session_factory() as session:

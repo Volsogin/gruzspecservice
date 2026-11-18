@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     bot_username: str | None = None
     operator_tg_chat_id: int | None = None
     telegram_api_base: str = "https://api.telegram.org"
+    telegram_proxy_url: str | None = None
     telegram_mode: Literal["polling", "webhook", "off"] = "polling"
     telegram_webhook_secret: SecretStr | None = None
 
@@ -124,7 +125,15 @@ class Settings(BaseSettings):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
-    @field_validator("operator_email", "smtp_host", "smtp_user", "bot_username", "max_bot_username", mode="before")
+    @field_validator(
+        "operator_email",
+        "smtp_host",
+        "smtp_user",
+        "bot_username",
+        "max_bot_username",
+        "telegram_proxy_url",
+        mode="before",
+    )
     @classmethod
     def _empty_to_none(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
