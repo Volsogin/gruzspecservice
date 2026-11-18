@@ -1,10 +1,17 @@
-name: CI
+name: backend
+
+# Runs only when the backend (or this workflow) changes. The frontend gets its own workflow file.
 on:
   push:
+    branches: [main]
+    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
   pull_request:
+    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
+  workflow_dispatch:
 
 jobs:
-  backend:
+  checks:
+    name: lint, types, tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -19,6 +26,7 @@ jobs:
       - run: uv run pytest -q
 
   docker:
+    name: docker compose build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

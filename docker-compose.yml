@@ -36,6 +36,16 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Frontend — will be added together with frontend/ (see frontend/README.md):
+  # web:
+  #   build: ./frontend
+  #   environment:
+  #     VITE_API_URL: http://localhost:${API_PORT:-8000}/api/v1
+  #   ports:
+  #     - "${WEB_PORT:-5173}:80"
+  #   depends_on:
+  #     - api
+
 volumes:
   pgdata:
   appdata:

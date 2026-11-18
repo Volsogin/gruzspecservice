@@ -14,3 +14,13 @@ __pycache__/
 .pytest_cache/
 .~lock.*
 *.odt
+
+# frontend (будущий каталог frontend/)
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.local
+coverage/
+
+# справочные материалы команды — только локально
+docs/reference/
