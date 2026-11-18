@@ -78,6 +78,18 @@ class SiteSettings:
     def work_status(self) -> dict[str, Any]:
         return work_status(self.section("work_hours"), self.timezone).as_dict()
 
+    def _messengers(self, bot_username: str | None) -> dict[str, Any]:
+        """A placeholder Telegram link is replaced by the real bot (BOT_USERNAME) when it's configured."""
+        messengers = {k: dict(v) if isinstance(v, dict) else v for k, v in self.section("messengers").items()}
+        tg = messengers.get("telegram")
+        if bot_username and (not isinstance(tg, dict) or tg.get("is_placeholder")):
+            messengers["telegram"] = {
+                "title": "Telegram",
+                "url": f"https://t.me/{bot_username.lstrip('@')}",
+                "is_placeholder": False,
+            }
+        return messengers
+
     def public(self, bot_username: str | None = None) -> dict[str, Any]:
         """Everything the website shows: contacts, address/coordinates, hours, stats, links."""
         lat, lon = self.sto_point
@@ -85,7 +97,7 @@ class SiteSettings:
         return {
             "company": self.section("company"),
             "contacts": self.section("contacts"),
-            "messengers": self.section("messengers"),
+            "messengers": self._messengers(bot_username),
             "address": address,
             "work_hours": self.section("work_hours"),
             "timezone": self.timezone,

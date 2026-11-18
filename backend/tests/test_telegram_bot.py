@@ -224,6 +224,12 @@ async def test_client_cannot_cancel_after_dispatch(env: Env) -> None:
 async def test_public_settings_expose_bot_link(env: Env) -> None:
     data = (await env.client.get("/api/v1/settings/public")).json()
     assert data["telegram_bot"] == {"username": "test_bot", "url": "https://t.me/test_bot"}
+    assert data["messengers"]["telegram"] == {
+        "title": "Telegram",
+        "url": "https://t.me/test_bot",
+        "is_placeholder": False,
+    }
+    assert data["messengers"]["max"]["is_placeholder"] is True  # Max stays a placeholder
 
 
 async def test_find_leads_by_typed_phone(env: Env) -> None:

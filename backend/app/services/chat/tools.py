@@ -159,7 +159,10 @@ class ChatTools:
         cfg = self.ctx.kb.site.dispatch_config()
         lat, lon = args.get("lat"), args.get("lon")
         if (lat is None or lon is None) and args.get("address") and self.geocoder is not None:
-            found = await self.geocoder.geocode(str(args["address"])[:200], limit=1)
+            address = str(args["address"])[:200]
+            if "саратов" not in address.lower():  # "Сокурский тракт" alone may resolve to another region
+                address = f"{cfg.region_name}, {address}"
+            found = await self.geocoder.geocode(address, limit=1)
             if found:
                 lat, lon = found[0].lat, found[0].lon
         if not isinstance(lat, int | float) or not isinstance(lon, int | float):

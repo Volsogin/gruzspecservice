@@ -25,9 +25,35 @@ jobs:
       - run: uv run mypy app scripts
       - run: uv run pytest -q
 
-  docker:
-    name: docker compose build
+  compose:
+    name: docker compose up + smoke test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker compose build
+      - name: Start PostgreSQL + API
+        run: docker compose up -d --build
+      - name: Wait for /healthz
+        run: |
+          for i in $(seq 1 60); do curl -sf http://localhost:8000/healthz && exit 0; sleep 2; done
+          docker compose logs api; exit 1
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          B=http://localhost:8000/api/v1
+          curl -sf http://localhost:8000/readyz | tee /dev/stderr | grep -q '"database":true'
+          curl -sf $B/bootstrap | python3 -c "import json,sys; d=json.load(sys.stdin); assert len(d['services']) >= 6"
+          LEAD=$(curl -sf -X POST $B/leads -H 'Content-Type: application/json' -d '{"lead_type":"callback","name":"CI","phone":"+7 900 000-00-00","consent":true}')
+          TOKEN=$(echo "$LEAD" | python3 -c "import json,sys; print(json.load(sys.stdin)['public_token'])")
+          curl -sf $B/orders/$TOKEN | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['status'] == 'new', d"
+          curl -sf -X POST $B/calculator/estimate -H 'Content-Type: application/json' -d '{"brand":"MAN","work_type":"diagnostics"}' | grep -q price_from
+      - name: Restart keeps data (migrations + seed are idempotent)
+        run: |
+          docker compose restart api
+          for i in $(seq 1 60); do curl -sf http://localhost:8000/healthz && break; sleep 2; done
+          curl -sf "http://localhost:8000/api/v1/reviews?limit=50" | python3 -c "import json,sys; assert json.load(sys.stdin)['total'] == 10"
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
