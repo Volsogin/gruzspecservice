@@ -164,7 +164,7 @@ class TelegramBot:
             op, created = await register_operator(session, user, chat_id)
             await session.commit()
             name = op.name
-        logger.info("operator_registered", extra={"created": created})
+        logger.info("operator_registered", extra={"new_operator": created})
         await self._send(chat_id, f"{html.escape(name)}, " + OPERATOR_HELP)
 
     async def _toggle_shift(self, chat_id: int, user: dict[str, Any], arg: str) -> None:

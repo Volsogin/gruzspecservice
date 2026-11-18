@@ -135,7 +135,7 @@ def make_settings(tmp: Path, **overrides: Any) -> Settings:
         "api_base_url": "https://api.site.test",
         "run_background_tasks": False,
         "log_json": False,
-        "log_level": "WARNING",
+        "log_level": "INFO",  # INFO so every log call (and its `extra` keys) is exercised
         "operator_email": "ops@example.test",
         "telegram_bot_token": "123:FAKE",
         "bot_username": "test_bot",
