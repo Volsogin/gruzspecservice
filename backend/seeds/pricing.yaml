@@ -1,0 +1,48 @@
+# ДЕМО-цены калькулятора («от N ₽»). Правятся в админке после загрузки.
+# price_from = ceil100(base × brand.coefficient × vehicle_type.coefficient × (1 + urgent%) + onsite_fee)
+
+work_types:
+  - {slug: maintenance,  title: "Плановое ТО",                          base_price: 6000,  sort_order: 10}
+  - {slug: diagnostics,  title: "Компьютерная диагностика",             base_price: 2500,  sort_order: 20}
+  - {slug: engine,       title: "Ремонт двигателя",                     base_price: 15000, sort_order: 30}
+  - {slug: chassis,      title: "Ремонт ходовой части",                 base_price: 5000,  sort_order: 40}
+  - {slug: brakes,       title: "Ремонт тормозной системы",             base_price: 4000,  sort_order: 50}
+  - {slug: transmission, title: "Ремонт трансмиссии (КПП, сцепление)",  base_price: 9000,  sort_order: 60}
+  - {slug: pneumatics,   title: "Ремонт пневмосистемы",                 base_price: 3000,  sort_order: 70}
+  - {slug: fuel,         title: "Ремонт топливной системы",             base_price: 6000,  sort_order: 80}
+  - {slug: electrics,    title: "Электрика и блоки управления",         base_price: 3500,  sort_order: 90}
+  - {slug: onsite,       title: "Выезд мастера (диагностика на месте)", base_price: 4500,  sort_order: 100, is_onsite_service: true}
+  - {slug: towing,       title: "Эвакуация (по городу)",                base_price: 12000, sort_order: 110, is_onsite_service: true}
+
+vehicle_types:
+  - {slug: tractor,     title: "Седельный тягач",  coefficient: 1.0,  sort_order: 10}
+  - {slug: truck,       title: "Грузовик",         coefficient: 0.9,  sort_order: 20}
+  - {slug: dump,        title: "Самосвал",         coefficient: 1.05, sort_order: 30}
+  - {slug: semitrailer, title: "Полуприцеп",       coefficient: 0.7,  sort_order: 40}
+  - {slug: special,     title: "Спецтехника",      coefficient: 1.25, sort_order: 50}
+
+# origin: europe | china | russia | america | trailer | special
+brands:
+  - {slug: daf,        title: DAF,          origin: europe,  coefficient: 1.2,  aliases: ["даф"]}
+  - {slug: man,        title: MAN,          origin: europe,  coefficient: 1.2,  aliases: ["ман"]}
+  - {slug: scania,     title: Scania,       origin: europe,  coefficient: 1.25, aliases: ["скания", "скания"]}
+  - {slug: volvo,      title: Volvo,        origin: europe,  coefficient: 1.25, aliases: ["вольво"]}
+  - {slug: mercedes,   title: Mercedes-Benz, origin: europe, coefficient: 1.25, aliases: ["mercedes", "мерседес", "мерс"]}
+  - {slug: iveco,      title: Iveco,        origin: europe,  coefficient: 1.15, aliases: ["ивеко"]}
+  - {slug: renault,    title: Renault,      origin: europe,  coefficient: 1.15, aliases: ["рено"]}
+  - {slug: sitrak,     title: Sitrak,       origin: china,   coefficient: 1.05, aliases: ["ситрак"]}
+  - {slug: shacman,    title: Shacman,      origin: china,   coefficient: 1.0,  aliases: ["шахман", "шакман"]}
+  - {slug: howo,       title: Howo,         origin: china,   coefficient: 1.0,  aliases: ["хово", "хова"]}
+  - {slug: faw,        title: FAW,          origin: china,   coefficient: 1.0,  aliases: ["фав"]}
+  - {slug: foton,      title: Foton,        origin: china,   coefficient: 0.95, aliases: ["фотон"]}
+  - {slug: dongfeng,   title: Dongfeng,     origin: china,   coefficient: 0.95, aliases: ["донгфенг", "донг фэнг", "dong feng"]}
+  - {slug: kamaz,      title: КамАЗ,        origin: russia,  coefficient: 0.9,  aliases: ["kamaz", "камаз"]}
+  - {slug: maz,        title: МАЗ,          origin: russia,  coefficient: 0.9,  aliases: ["maz", "маз"]}
+  - {slug: gazon-next, title: ГАЗон Next,   origin: russia,  coefficient: 0.8,  aliases: ["газон", "gazon next", "газон некст"]}
+  - {slug: ural-next,  title: Урал Next,    origin: russia,  coefficient: 0.9,  aliases: ["урал", "ural next", "урал некст"]}
+  - {slug: schmitz,    title: Schmitz,      origin: trailer, coefficient: 0.8,  aliases: ["шмитц", "шмиц"]}
+  - {slug: koegel,     title: Kögel,        origin: trailer, coefficient: 0.8,  aliases: ["kogel", "koegel", "кегель", "когель"]}
+  - {slug: krone,      title: Krone,        origin: trailer, coefficient: 0.8,  aliases: ["кроне"]}
+  - {slug: tonar,      title: Тонар,        origin: trailer, coefficient: 0.75, aliases: ["tonar"]}
+  - {slug: velton,     title: Вэлтон,       origin: trailer, coefficient: 0.75, aliases: ["velton", "велтон"]}
+  - {slug: caterpillar, title: Caterpillar, origin: special, coefficient: 1.3,  aliases: ["cat", "катерпиллер"]}

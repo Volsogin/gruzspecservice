@@ -1,0 +1,54 @@
+[
+  {
+    "slug": "man-tga-air-leak",
+    "title": "MAN TGA: утечка воздуха на трассе",
+    "vehicle_brand": "MAN", "vehicle_model": "TGA 18.440",
+    "service_slug": "onsite-repair", "location_mode": "onsite",
+    "problem": "Ночью на объездной давление в пневмосистеме падало, машина не могла продолжить движение.",
+    "work_done": ["Поиск утечки", "Замена пневмотрубки и фитинга", "Проверка давления в контурах"],
+    "duration_hours": 1.5, "price_from": 7800, "completed_on": "2026-10-27", "is_demo": true,
+    "photos": [
+      {"kind": "before", "caption": "Лопнувшая трубка у ресивера"},
+      {"kind": "after", "caption": "Новая трубка и фитинг"}
+    ]
+  },
+  {
+    "slug": "kamaz-clutch",
+    "title": "КамАЗ 5490: замена сцепления за день",
+    "vehicle_brand": "КамАЗ", "vehicle_model": "5490 NEO",
+    "service_slug": "sto-repair", "location_mode": "sto",
+    "problem": "Пробуксовка сцепления под нагрузкой, рывки при трогании.",
+    "work_done": ["Снятие КПП", "Замена диска, корзины и выжимного подшипника", "Регулировка ПГУ"],
+    "duration_hours": 8, "price_from": 38500, "completed_on": "2026-10-06", "is_demo": true,
+    "photos": [
+      {"kind": "before", "caption": "Изношенный диск сцепления"},
+      {"kind": "after", "caption": "Установлен новый комплект"}
+    ]
+  },
+  {
+    "slug": "volvo-fh-diagnostics",
+    "title": "Volvo FH: аварийный режим двигателя",
+    "vehicle_brand": "Volvo", "vehicle_model": "FH 460",
+    "service_slug": "onsite-diagnostics", "location_mode": "onsite",
+    "problem": "Ошибка по двигателю, ограничение мощности.",
+    "work_done": ["Компьютерная диагностика на стоянке", "Замена датчика давления наддува", "Сброс ошибок, тест-драйв"],
+    "duration_hours": 2, "price_from": 9200, "completed_on": "2026-09-29", "is_demo": true,
+    "photos": [
+      {"kind": "before", "caption": "Ошибки в блоке управления"},
+      {"kind": "after", "caption": "Ошибок нет, мощность восстановлена"}
+    ]
+  },
+  {
+    "slug": "daf-tow",
+    "title": "DAF XF: эвакуация и ремонт КПП",
+    "vehicle_brand": "DAF", "vehicle_model": "XF 480",
+    "service_slug": "tow-truck", "location_mode": "onsite",
+    "problem": "Отказ коробки передач в рейсе, ремонт на месте невозможен.",
+    "work_done": ["Эвакуация тягача на СТО", "Дефектовка и ремонт КПП", "Замена масла в КПП"],
+    "duration_hours": 30, "price_from": 96000, "completed_on": "2026-08-25", "is_demo": true,
+    "photos": [
+      {"kind": "before", "caption": "Погрузка на эвакуатор"},
+      {"kind": "after", "caption": "КПП после ремонта"}
+    ]
+  }
+]
