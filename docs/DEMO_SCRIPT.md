@@ -97,4 +97,4 @@ curl -sN -X POST $B/chat/sessions/$S/messages -H 'Content-Type: application/json
 make check
 ```
 
-ruff, mypy --strict и 109 тестов за ~6 секунд; CI в `.github/workflows/backend.yml`.
+ruff, mypy --strict и 113 тестов за ~6 секунд; CI в `.github/workflows/backend.yml`.

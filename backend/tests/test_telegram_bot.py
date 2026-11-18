@@ -157,7 +157,7 @@ async def test_start_menu_and_username_autobind(env: Env) -> None:
     texts = [m["text"] for m in env.tg.to(CLIENT)]
     assert any("ГРУЗСПЕЦСЕРВИС" in t for t in texts)
     assert any(lead["number"] in t and "Telegram-нику" in t for t in texts)
-    assert env.tg.to(CLIENT)[0]["keyboard"][0][0]["request_contact"] is True
+    assert [b["text"] for b in env.tg.to(CLIENT)[0]["keyboard"][0]] == ["🔎 Найти заявку", "📋 Мои заявки"]
 
 
 async def test_client_question_and_operator_reply_roundtrip(env: Env) -> None:
@@ -224,3 +224,53 @@ async def test_client_cannot_cancel_after_dispatch(env: Env) -> None:
 async def test_public_settings_expose_bot_link(env: Env) -> None:
     data = (await env.client.get("/api/v1/settings/public")).json()
     assert data["telegram_bot"] == {"username": "test_bot", "url": "https://t.me/test_bot"}
+
+
+async def test_find_lead_by_typed_phone_and_number(env: Env) -> None:
+    lead = await _lead(env)  # phone +79271234567
+    bot = _bot(env)
+    await bot.handle_update(_msg(CLIENT, "🔎 Найти заявку"))
+    assert "Напишите телефон" in env.tg.to(CLIENT)[-1]["text"]
+    await bot.handle_update(_msg(CLIENT, "8 927 123-45-67"))
+    assert "+7 *** *** 45 67" in env.tg.to(CLIENT)[-1]["text"]
+    number = lead["number"].split("-")[1]
+    await bot.handle_update(_msg(CLIENT, f"гс-{number}"))  # any reasonable spelling of the number
+    texts = [m["text"] for m in env.tg.to(CLIENT)]
+    assert any(f"Нашёл заявку {lead['number']}" in t for t in texts)
+    assert lead["number"] in env.tg.to(CLIENT)[-1]["text"]  # the list with buttons follows
+    await env.client.post(f"/api/v1/admin/leads/{lead['id']}/status", json={"status": "accepted"}, headers=env.admin)
+    await env.drain()
+    assert any("Принята мастером" in m["text"] for m in env.tg.to(CLIENT))
+
+
+async def test_find_lead_requires_matching_pair(env: Env) -> None:
+    lead = await _lead(env)
+    other = await _lead(env, phone="+79270000055")
+    bot = _bot(env)
+    await bot.handle_update(_msg(CLIENT, lead["number"]))  # number without a phone first
+    assert "Сначала напишите телефон" in env.tg.to(CLIENT)[-1]["text"]
+    await bot.handle_update(_msg(CLIENT, "+79271234567"))
+    await bot.handle_update(_msg(CLIENT, other["number"]))  # someone else's lead number
+    assert "Не нашёл заявку" in env.tg.to(CLIENT)[-1]["text"]
+    await bot.handle_update(_msg(CLIENT, "GS-999999"))  # non-existent: the very same answer
+    assert "Не нашёл заявку" in env.tg.to(CLIENT)[-1]["text"]
+    await bot.handle_update(_msg(CLIENT, "📋 Мои заявки"))
+    assert "Пока не вижу ваших заявок" in env.tg.to(CLIENT)[-1]["text"]
+
+
+async def test_find_lead_is_rate_limited(env: Env) -> None:
+    await _lead(env)
+    bot = _bot(env)
+    await bot.handle_update(_msg(CLIENT, "+79271234567"))
+    for n in range(6):
+        await bot.handle_update(_msg(CLIENT, f"GS-{900000 + n}"))
+    await bot.handle_update(_msg(CLIENT, "GS-900099"))
+    assert "Слишком много попыток" in env.tg.to(CLIENT)[-1]["text"]
+
+
+async def test_question_with_digits_is_not_mistaken_for_phone(env: Env) -> None:
+    lead = await _lead(env)
+    bot = _bot(env)
+    await bot.handle_update(_msg(CLIENT, f"/start {lead['public_token']}"))
+    await bot.handle_update(_msg(CLIENT, "Перезвоните на 8 927 000 11 22, пожалуйста, после 18:00"))
+    assert "Передал вопрос" in env.tg.to(CLIENT)[-1]["text"]

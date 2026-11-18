@@ -149,7 +149,7 @@ def build_container(
     chat = ChatService(
         settings, session_factory, leads, llm_provider, budget, live, limiter, geo, on_commit=outbox.kick
     )
-    bot = TelegramBot(tg, session_factory, settings, live, on_commit=outbox.kick) if tg else None
+    bot = TelegramBot(tg, session_factory, settings, live, on_commit=outbox.kick, limiter=limiter) if tg else None
     return Container(
         settings=settings,
         engine=engine,
