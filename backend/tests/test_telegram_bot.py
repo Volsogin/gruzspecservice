@@ -169,6 +169,7 @@ async def test_client_question_and_operator_reply_roundtrip(env: Env) -> None:
     await env.drain()
     question = next(m for m in env.tg.to(OPERATOR_CHAT) if "Вопрос клиента" in m["text"])
     assert "Сколько ещё ждать" in question["text"]
+    assert question["force_reply"] == "Ответ клиенту"  # the app opens «reply» automatically
 
     group_reply = _msg(OPERATOR_CHAT, "Будем через 15 минут", reply_to=question["message_id"], first_name="Мария")
     group_reply["message"]["chat"]["type"] = "supergroup"

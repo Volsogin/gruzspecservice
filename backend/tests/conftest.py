@@ -57,6 +57,7 @@ class FakeTelegram:
         buttons: list[list[InlineButton]] | None = None,
         reply_to_message_id: int | None = None,
         reply_keyboard: list[list[dict[str, Any]]] | None = None,
+        force_reply: str | None = None,
     ) -> dict[str, Any]:
         self._next_id += 1
         self.sent.append(
@@ -67,6 +68,7 @@ class FakeTelegram:
                 "message_id": self._next_id,
                 "reply_to": reply_to_message_id,
                 "keyboard": reply_keyboard,
+                "force_reply": force_reply,
             }
         )
         return {"message_id": self._next_id}

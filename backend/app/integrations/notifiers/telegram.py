@@ -78,6 +78,7 @@ class TelegramClient:
         buttons: list[list[InlineButton]] | None = None,
         reply_to_message_id: int | None = None,
         reply_keyboard: list[list[dict[str, Any]]] | None = None,
+        force_reply: str | None = None,
     ) -> dict[str, Any]:
         """`buttons` → inline keyboard; `reply_keyboard` → persistent keyboard under the input
         (e.g. `[[{"text": "📱 Поделиться номером", "request_contact": True}]]`)."""
@@ -91,6 +92,8 @@ class TelegramClient:
             payload["reply_markup"] = keyboard(buttons)
         elif reply_keyboard:
             payload["reply_markup"] = {"keyboard": reply_keyboard, "resize_keyboard": True, "is_persistent": True}
+        elif force_reply:  # value = input placeholder
+            payload["reply_markup"] = {"force_reply": True, "input_field_placeholder": force_reply[:64]}
         if reply_to_message_id:
             payload["reply_parameters"] = {"message_id": reply_to_message_id, "allow_sending_without_reply": True}
         result: dict[str, Any] = await self.call("sendMessage", payload)
@@ -147,5 +150,6 @@ class TelegramNotifier:
             message.html or message.text,
             buttons=message.buttons or None,
             reply_to_message_id=message.reply_to_message_id,
+            force_reply="Ответ клиенту" if message.force_reply else None,
         )
         return SendResult(external_id=str(result.get("message_id")))

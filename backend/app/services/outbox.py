@@ -150,9 +150,18 @@ class OutboxDispatcher:
         return lead
 
     # --- handlers --------------------------------------------------------------------------------
-    async def _send_tg(self, to: str, html_text: str, buttons: list[list[InlineButton]] | None = None) -> int | None:
+    async def _send_tg(
+        self, to: str, html_text: str, buttons: list[list[InlineButton]] | None = None, *, force_reply: bool = False
+    ) -> int | None:
         result = await self._notifier("telegram").send(
-            OutgoingMessage(channel="telegram", recipient=to, text="", html=html_text, buttons=buttons or [])
+            OutgoingMessage(
+                channel="telegram",
+                recipient=to,
+                text="",
+                html=html_text,
+                buttons=buttons or [],
+                force_reply=force_reply,
+            )
         )
         return int(result.external_id) if result.external_id and result.external_id.isdigit() else None
 
@@ -194,9 +203,9 @@ class OutboxDispatcher:
         chat_msg = await session.get(ChatMessage, int(msg.payload["chat_message_id"]))
         if chat_msg is None:
             raise SendError("chat message not found", permanent=True)
-        header = f"💬 Чат с сайта {chat_msg.session_id.hex[:8]} — ответьте реплаем, ответ уйдёт на сайт"
+        header = f"💬 Чат с сайта {chat_msg.session_id.hex[:8]} — напишите ответ, он уйдёт на сайт"
         to = str(msg.payload["to"])
-        message_id = await self._send_tg(to, f"<b>{n._e(header)}</b>\n{n._e(chat_msg.content)}")
+        message_id = await self._send_tg(to, f"<b>{n._e(header)}</b>\n{n._e(chat_msg.content)}", force_reply=True)
         if message_id is not None:
             session.add(TgRelay(chat_id=int(to), message_id=message_id, chat_session_id=chat_msg.session_id))
 
@@ -207,9 +216,9 @@ class OutboxDispatcher:
             header = f"✖ Клиент отменил заявку {lead.number} в Telegram"
         else:
             header = f"❓ Вопрос клиента по заявке {lead.number} ({status_label(lead.status)})"
-        hint = "<i>Ответьте реплаем — ответ придёт клиенту в бот.</i>"
+        hint = "<i>Просто напишите ответ — он уйдёт клиенту в бот.</i>"
         body = f"<b>{n._e(header)}</b>\n{n._e(payload.get('text', ''))}\n\n{hint}"
-        message_id = await self._send_tg(to, body)
+        message_id = await self._send_tg(to, body, force_reply=True)
         if message_id is not None:
             session.add(
                 TgRelay(

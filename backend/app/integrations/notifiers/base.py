@@ -28,6 +28,7 @@ class OutgoingMessage:
     html: str | None = None
     buttons: list[list[InlineButton]] = field(default_factory=list)
     reply_to_message_id: int | None = None
+    force_reply: bool = False  # Telegram opens "reply to this message" for the recipient automatically
 
 
 @dataclass(frozen=True)
