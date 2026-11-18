@@ -1,0 +1,26 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: bash -c 'cd backend && uv run ruff check --fix .'
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: ruff-format
+        name: ruff format
+        entry: bash -c 'cd backend && uv run ruff format .'
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: mypy
+        name: mypy --strict
+        entry: bash -c 'cd backend && uv run mypy app scripts'
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: no-env-files
+        name: forbid committing .env
+        entry: .env files must not be committed
+        language: fail
+        files: (^|/)\.env$

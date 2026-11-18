@@ -1,0 +1,41 @@
+# docker compose up --build → PostgreSQL + API on http://localhost:8000 (docs: /docs, admin: /admin)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gruzspec
+      POSTGRES_USER: gruzspec
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gruzspec_local_dev}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gruzspec -d gruzspec"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://gruzspec:${POSTGRES_PASSWORD:-gruzspec_local_dev}@db:5432/gruzspec
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - appdata:/data   # uploads and dev e-mails: named volume, never inside the source tree
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  appdata:
