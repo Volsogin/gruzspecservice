@@ -219,3 +219,26 @@ async def test_bind_reply_without_url_button_on_localhost(env: Env) -> None:
     )
     reply = env.tg.to(4242)[-1]
     assert reply["buttons"] == [] and lead["tracking_url"] in reply["text"]
+
+
+async def test_chatid_command(env: Env) -> None:
+    bot = env.container.telegram_bot
+    assert bot is not None
+    await bot.handle_update(
+        {
+            "update_id": 11,
+            "message": {
+                "message_id": 1,
+                "chat": {"id": -100555, "type": "supergroup"},
+                "text": "/chatid@gruzspec64_bot",
+            },
+        }
+    )
+    assert "OPERATOR_TG_CHAT_ID=-100555" in env.tg.to(-100555)[-1]["text"]
+    await bot.handle_update(
+        {
+            "update_id": 12,
+            "message": {"message_id": 2, "chat": {"id": OPERATOR_CHAT, "type": "supergroup"}, "text": "/chatid"},
+        }
+    )
+    assert "уже подключён" in env.tg.to(OPERATOR_CHAT)[-1]["text"]

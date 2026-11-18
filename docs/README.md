@@ -139,7 +139,8 @@ docker run --rm hello-world
 
 ### Telegram за 3 минуты
 1. @BotFather → `/newbot` → токен в `TELEGRAM_BOT_TOKEN`, имя бота (без @) в `BOT_USERNAME`.
-2. Создайте группу операторов, добавьте бота, напишите в группе сообщение. Узнать id группы:
+2. Создайте группу операторов, добавьте туда бота и отправьте в группе команду `/chatid` — бот ответит id чата
+   (отрицательное число) → `OPERATOR_TG_CHAT_ID`. Перезапустите API.
    `https://api.telegram.org/bot<токен>/getUpdates` → `message.chat.id` (отрицательное число) → `OPERATOR_TG_CHAT_ID`.
 3. Перезапустите API. Бот работает через long polling (`TELEGRAM_MODE=polling`), публичный URL не нужен.
 

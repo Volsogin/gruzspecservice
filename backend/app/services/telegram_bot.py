@@ -66,6 +66,9 @@ class TelegramBot:
         text = str(msg.get("text") or "")
         if chat_id is None:
             return
+        if text.split("@", 1)[0].split(maxsplit=1)[0:1] == ["/chatid"]:
+            await self._reply_chat_id(chat_id, chat)
+            return
         if self.routing.operator_tg_chat_id is not None and chat_id == self.routing.operator_tg_chat_id:
             reply_to = (msg.get("reply_to_message") or {}).get("message_id")
             if reply_to and text and not text.startswith("/"):
@@ -79,6 +82,17 @@ class TelegramBot:
                 await self._bind(chat_id, parts[1].strip())
             else:
                 await self.client.send_message(chat_id, html.escape(WELCOME))
+
+    async def _reply_chat_id(self, chat_id: int, chat: dict[str, Any]) -> None:
+        """Setup helper: tells the id to put into OPERATOR_TG_CHAT_ID (chat ids are not secret)."""
+        is_operator_chat = chat_id == self.routing.operator_tg_chat_id
+        text = f"ID этого чата: <code>{chat_id}</code>"
+        if is_operator_chat:
+            text += "\nЭтот чат уже подключён как чат операторов ✅"
+        elif chat.get("type") in ("group", "supergroup"):
+            text += f"\nЧтобы заявки приходили сюда, укажите в .env:\n<code>OPERATOR_TG_CHAT_ID={chat_id}</code>"
+        logger.info("telegram_chat_id_requested", extra={"chat_type": chat.get("type")})
+        await self.client.send_message(chat_id, text)
 
     async def _bind(self, chat_id: int, token: str) -> None:
         async with self.session_factory() as session:
