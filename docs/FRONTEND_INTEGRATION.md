@@ -143,7 +143,14 @@ mode, session_status} — показать `suggested_replies` кнопками-
 Живой чат (если `live_chat_available`): после handoff откройте `new EventSource(`${API}/chat/sessions/${id}/events`)` —
 приходят `operator_message` {text, operator_name}; сообщения пользователя отправляйте как обычно.
 
-## 9. Прочее
+## 9. Telegram-бот на сайте
+- Ссылка «Написать в Telegram» / «Наш бот» — `settings.telegram_bot.url` (`null`, если бот не настроен).
+  В боте клиент нажимает «📱 Поделиться номером» и видит свои заявки, задаёт вопросы оператору, может отменить заявку.
+- На экране подтверждения — кнопка «Получать статус в Telegram» (`telegram_bind_url`): самый короткий путь.
+- Поле формы `telegram_username` необязательное: если клиент указал ник и потом нажмёт Start в боте, бот сам
+  подпишет его на заявку. Покажите `help` из схемы поля рядом с ним.
+
+## 10. Прочее
 - Ошибки — `{error: {code, message, fields?}}`; на 429 есть `Retry-After`.
 - Фото и медиа: абсолютные URL от `API_BASE_URL`, кэш на год.
 - Опционально бэкенд раздаёт собранный фронт: `FRONTEND_DIST_DIR=/path/to/dist` → `/` и SPA-fallback на

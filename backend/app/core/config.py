@@ -86,6 +86,8 @@ class Settings(BaseSettings):
     operator_tg_chat_id: int | None = None
     telegram_api_base: str = "https://api.telegram.org"
     telegram_proxy_url: str | None = None
+    # Operators register in the bot with `/operator <code>`; empty → registration disabled.
+    operator_invite_code: SecretStr | None = None
     telegram_mode: Literal["polling", "webhook", "off"] = "polling"
     telegram_webhook_secret: SecretStr | None = None
 
@@ -146,6 +148,7 @@ class Settings(BaseSettings):
         "dgis_api_key",
         "admin_token",
         "smtp_password",
+        "operator_invite_code",
         "max_bot_token",
         "telegram_webhook_secret",
         "operator_tg_chat_id",

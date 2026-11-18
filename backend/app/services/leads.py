@@ -281,7 +281,7 @@ class LeadService:
             session.add(IdempotencyRecord(key=idem_key, request_hash=request_hash, lead_id=lead_id))
         await session.flush()
         await session.refresh(lead, ["estimate"])
-        enqueue_lead_created(session, lead, self.routing)
+        await enqueue_lead_created(session, lead, self.routing)
         await session.commit()
         return lead
 
@@ -323,5 +323,5 @@ class LeadService:
         session.add(lead)
         await session.flush()
         await session.refresh(lead, ["estimate", "attachments"])
-        enqueue_lead_created(session, lead, self.routing)
+        await enqueue_lead_created(session, lead, self.routing)
         return lead

@@ -77,7 +77,10 @@ class TelegramClient:
         *,
         buttons: list[list[InlineButton]] | None = None,
         reply_to_message_id: int | None = None,
+        reply_keyboard: list[list[dict[str, Any]]] | None = None,
     ) -> dict[str, Any]:
+        """`buttons` → inline keyboard; `reply_keyboard` → persistent keyboard under the input
+        (e.g. `[[{"text": "📱 Поделиться номером", "request_contact": True}]]`)."""
         payload: dict[str, Any] = {
             "chat_id": chat_id,
             "text": text[:4096],
@@ -86,6 +89,8 @@ class TelegramClient:
         }
         if buttons:
             payload["reply_markup"] = keyboard(buttons)
+        elif reply_keyboard:
+            payload["reply_markup"] = {"keyboard": reply_keyboard, "resize_keyboard": True, "is_persistent": True}
         if reply_to_message_id:
             payload["reply_parameters"] = {"message_id": reply_to_message_id, "allow_sending_without_reply": True}
         result: dict[str, Any] = await self.call("sendMessage", payload)

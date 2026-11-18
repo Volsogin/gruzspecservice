@@ -20,18 +20,19 @@ from app.domain.forms import FieldType, form_for_lead_type
 from app.domain.phone import format_phone
 from app.domain.statuses import (
     LEAD_TYPE_LABELS,
-    STATUS_ACTIONS,
     LeadStatus,
     LeadType,
-    allowed_transitions,
     status_label,
 )
-from app.integrations.notifiers.base import InlineButton, telegram_link
+from app.integrations.notifiers.base import telegram_link
+from app.services.operators import assignee_line, recipients_for
 
 # Outbox kinds
 OPERATOR_LEAD_CREATED = "operator.lead_created"
 OPERATOR_LEAD_REFRESH = "operator.lead_refresh"
 OPERATOR_CHAT_MESSAGE = "operator.chat_message"
+OPERATOR_CLIENT_MESSAGE = "operator.client_message"
+CLIENT_OPERATOR_REPLY = "client.operator_reply"
 CLIENT_LEAD_CREATED = "client.lead_created"
 CLIENT_STATUS_CHANGED = "client.status_changed"
 
@@ -61,16 +62,17 @@ def _add(session: AsyncSession, kind: str, channel: str, lead_id: uuid.UUID | No
     session.add(OutboxMessage(kind=kind, channel=channel, lead_id=lead_id, payload=payload))
 
 
-def enqueue_lead_created(session: AsyncSession, lead: Lead, routing: Routing) -> None:
-    """Operator gets the lead (e-mail + Telegram); the client gets a confirmation e-mail if given."""
+async def enqueue_lead_created(session: AsyncSession, lead: Lead, routing: Routing) -> None:
+    """Operators get the lead (e-mail + Telegram cards); the client gets a confirmation e-mail if given."""
     if routing.operator_email:
         _add(session, OPERATOR_LEAD_CREATED, "email", lead.id, to=routing.operator_email)
     elif routing.email_to_file:
         # Dev mode: SMTP is off, so the letter only lands in var/mail/*.eml — never sent anywhere.
         _add(session, OPERATOR_LEAD_CREATED, "email", lead.id, to=DEV_OPERATOR_EMAIL)
-    if routing.operator_tg_chat_id is not None:
-        _add(session, OPERATOR_LEAD_CREATED, "telegram", lead.id, to=str(routing.operator_tg_chat_id))
-    elif not routing.telegram_enabled:
+    if routing.telegram_enabled:
+        for r in await recipients_for(session, routing.operator_tg_chat_id, lead):
+            _add(session, OPERATOR_LEAD_CREATED, "telegram", lead.id, to=str(r.chat_id), operator_id=r.operator_id)
+    else:
         _add(session, OPERATOR_LEAD_CREATED, "log", lead.id, to="log")
     if lead.email:
         _add(session, CLIENT_LEAD_CREATED, "email", lead.id, to=lead.email)
@@ -90,23 +92,59 @@ def enqueue_status_changed(
     for ch in channels:
         if ch.kind in ("telegram", "max"):
             _add(session, CLIENT_STATUS_CHANGED, ch.kind, lead.id, to=ch.address, **snapshot)
-    if routing.operator_tg_chat_id is not None:  # handler is a no-op until the card has been sent
-        _add(session, OPERATOR_LEAD_REFRESH, "telegram", lead.id, to=str(routing.operator_tg_chat_id))
+    enqueue_cards_refresh(session, lead, routing)
 
 
-def enqueue_chat_forward(session: AsyncSession, chat_message_id: int, routing: Routing) -> bool:
-    """Level B live chat: forward a client message to the operators' Telegram chat."""
-    if routing.operator_tg_chat_id is None:
+def enqueue_cards_refresh(session: AsyncSession, lead: Lead, routing: Routing) -> None:
+    """Re-render every operator card of the lead (status, responsible, buttons)."""
+    if routing.telegram_enabled:
+        _add(session, OPERATOR_LEAD_REFRESH, "telegram", lead.id, to="cards")
+
+
+async def enqueue_chat_forward(
+    session: AsyncSession, chat_message_id: int, routing: Routing, lead: Lead | None = None
+) -> bool:
+    """Live chat from the website: forward the client's message to the responsible / on-shift operators."""
+    if not routing.telegram_enabled:
         return False
+    recipients = await recipients_for(session, routing.operator_tg_chat_id, lead)
+    for r in recipients:
+        _add(session, OPERATOR_CHAT_MESSAGE, "telegram", None, to=str(r.chat_id), chat_message_id=chat_message_id)
+    return bool(recipients)
+
+
+async def enqueue_client_message(
+    session: AsyncSession, lead: Lead, client_chat_id: int, text: str, routing: Routing, *, kind: str = "question"
+) -> bool:
+    """A client wrote to the bot about a lead (question / cancellation) → operators who should see it."""
+    if not routing.telegram_enabled:
+        return False
+    recipients = await recipients_for(session, routing.operator_tg_chat_id, lead)
+    for r in recipients:
+        _add(
+            session,
+            OPERATOR_CLIENT_MESSAGE,
+            "telegram",
+            lead.id,
+            to=str(r.chat_id),
+            client_chat_id=client_chat_id,
+            text=text[:3000],
+            message_type=kind,
+        )
+    return bool(recipients)
+
+
+def enqueue_operator_reply(session: AsyncSession, lead: Lead, client_chat_id: int, text: str, operator: str) -> None:
+    """An operator answered a client's Telegram question → deliver it to the client's bot chat."""
     _add(
         session,
-        OPERATOR_CHAT_MESSAGE,
+        CLIENT_OPERATOR_REPLY,
         "telegram",
-        None,
-        to=str(routing.operator_tg_chat_id),
-        chat_message_id=chat_message_id,
+        lead.id,
+        to=str(client_chat_id),
+        text=text[:3000],
+        operator=operator[:60],
     )
-    return True
 
 
 # --- rendering ---------------------------------------------------------------------------------
@@ -132,25 +170,6 @@ def _detail_lines(lead: Lead) -> list[tuple[str, str]]:
     return lines
 
 
-def operator_buttons(lead: Lead) -> list[list[InlineButton]]:
-    nexts = allowed_transitions(lead.type, lead.status)
-    row = [
-        InlineButton(STATUS_ACTIONS[s], callback_data=f"st:{lead.id.hex}:{s.value}")
-        for s in nexts
-        if s is not LeadStatus.CANCELLED
-    ]
-    rows = [row] if row else []
-    if LeadStatus.CANCELLED in nexts:
-        rows.append(
-            [
-                InlineButton(
-                    STATUS_ACTIONS[LeadStatus.CANCELLED], callback_data=f"st:{lead.id.hex}:{LeadStatus.CANCELLED.value}"
-                )
-            ]
-        )
-    return rows
-
-
 def render_operator_lead(lead: Lead, settings: Settings, *, html_mode: bool) -> str:
     """Operator card for a lead: everything needed to call the client back."""
     e = _e if html_mode else str
@@ -160,6 +179,8 @@ def render_operator_lead(lead: Lead, settings: Settings, *, html_mode: bool) -> 
         f"{e(LEAD_TYPE_LABELS[LeadType(lead.type)])}",
         f"Статус: {e(status_label(lead.status))}",
     ]
+    if line := assignee_line(lead):
+        out.append(e(line))
     if lead.service_slug:
         out.append(f"Услуга: {e(lead.service_slug)}")
     out.append(f"Имя: {e(lead.name or '—')}")

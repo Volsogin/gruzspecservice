@@ -30,9 +30,9 @@ class CachedBody:
     built_at: float
 
 
-async def build_bootstrap(session: AsyncSession) -> dict[str, Any]:
+async def build_bootstrap(session: AsyncSession, bot_username: str | None = None) -> dict[str, Any]:
     site = await load_settings(session)
-    public = site.public()
+    public = site.public(bot_username)
     brands = (await session.scalars(select(PriceBrand).order_by(PriceBrand.sort_order))).all()
     lat, lon = site.sto_point
     dispatch = site.dispatch_config()
@@ -58,7 +58,10 @@ async def build_bootstrap(session: AsyncSession) -> dict[str, Any]:
 class BootstrapCache:
     """Builds the payload at most once per `ttl` seconds; ETag = content hash."""
 
-    def __init__(self, session_factory: async_sessionmaker[AsyncSession], ttl: float) -> None:
+    def __init__(
+        self, session_factory: async_sessionmaker[AsyncSession], ttl: float, bot_username: str | None = None
+    ) -> None:
+        self.bot_username = bot_username
         self.session_factory = session_factory
         self.ttl = ttl
         self._entry: CachedBody | None = None
@@ -76,7 +79,7 @@ class BootstrapCache:
             if entry and time.monotonic() - entry.built_at < self.ttl:
                 return entry
             async with self.session_factory() as session:
-                payload = await build_bootstrap(session)
+                payload = await build_bootstrap(session, self.bot_username)
             raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str).encode()
             # work_status.local_time changes every minute; exclude it from the ETag so caches stay warm.
             stable = dict(payload, work_status={k: v for k, v in payload["work_status"].items() if k != "local_time"})

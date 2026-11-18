@@ -36,9 +36,9 @@ PUBLIC_CACHE = "public, max-age=60, stale-while-revalidate=300"
     description="Телефон, мессенджеры, адрес и координаты СТО для карты, режим работы и текущий статус "
     "(`work_status`), статистика блока доверия (демо), гарантия, ссылки на отзывы.",
 )
-async def public_settings(db: DbDep, response: Response) -> dict[str, Any]:
+async def public_settings(db: DbDep, response: Response, container: ContainerDep) -> dict[str, Any]:
     response.headers["Cache-Control"] = PUBLIC_CACHE
-    return (await load_settings(db)).public()
+    return (await load_settings(db)).public(container.settings.bot_username)
 
 
 @router.get(

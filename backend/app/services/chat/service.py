@@ -27,7 +27,7 @@ from app.core.errors import AppError, NotFound, RateLimited, ValidationFailed
 from app.core.ratelimit import RateLimiter
 from app.core.security import hash_ip
 from app.db.base import utcnow
-from app.db.models import ChatMessage, ChatSession, PriceVehicleType
+from app.db.models import ChatMessage, ChatSession, Lead, PriceVehicleType
 from app.domain.phone import extract_phone, mask_phone
 from app.domain.topics import SUGGESTED_REPLIES, Topic, asks_for_operator, detect_topic
 from app.integrations.geocoder.dgis import Geocoder
@@ -47,6 +47,7 @@ from app.services.chat.prompts import AFFIRMATIVE, OPERATOR_OFFER_MARKERS, SYSTE
 from app.services.chat.tools import ChatTools, tool_definitions
 from app.services.leads import LeadService, RequestContext, created_response
 from app.services.notifications import Routing, enqueue_chat_forward
+from app.services.operators import recipients_for
 
 logger = logging.getLogger(__name__)
 
@@ -117,9 +118,11 @@ class ChatService:
         self.on_commit = on_commit
         self.routing = Routing.from_settings(settings)
 
-    @property
-    def live_chat_available(self) -> bool:
-        return self.routing.operator_tg_chat_id is not None
+    async def live_chat_available(self, db: AsyncSession) -> bool:
+        """Live chat works when someone can receive messages in Telegram: operators on shift or the group."""
+        if not self.routing.telegram_enabled:
+            return False
+        return bool(await recipients_for(db, self.routing.operator_tg_chat_id))
 
     # --- sessions -------------------------------------------------------------------------------
     async def create_session(self, *, consent: bool, name: str | None, ip: str | None) -> dict[str, Any]:
@@ -150,7 +153,7 @@ class ChatService:
             return {
                 **_session_dict(chat),
                 "llm_enabled": self.llm is not None,
-                "live_chat_available": self.live_chat_available,
+                "live_chat_available": await self.live_chat_available(db),
                 "messages": [message_dict(msg)],
             }
 
@@ -425,7 +428,7 @@ class ChatService:
     async def request_operator(self, ctx: TurnContext, *, reason: str) -> tuple[str, list[Event]]:
         """Level A: create a `chat_handoff` lead (ask phone first if needed). Level B: live chat via Telegram."""
         chat = ctx.chat
-        live = self.live_chat_available
+        live = await self.live_chat_available(ctx.db)
         events: list[Event] = [{"event": "handoff", "data": {"status": "requested", "live_chat": live}}]
         if chat.lead_id and chat.status in ("waiting_operator", "operator"):
             return "Оператор уже получил ваш запрос и скоро свяжется с вами.", events
@@ -494,7 +497,8 @@ class ChatService:
         )
         chat.lead_id = lead.id
         chat.awaiting_phone = False
-        if not self.live_chat_available:
+        live = await self.live_chat_available(ctx.db)
+        if not live:
             chat.status = "bot"  # level A only: the operator calls back, the bot keeps helping meanwhile
         await ctx.db.commit()
         self.on_commit()
@@ -503,14 +507,14 @@ class ChatService:
         events.append(
             {
                 "event": "handoff",
-                "data": {"status": chat.status, "lead_number": lead.number, "live_chat": self.live_chat_available},
+                "data": {"status": chat.status, "lead_number": lead.number, "live_chat": live},
             }
         )
         text = (
             f"Передал ваш запрос оператору — заявка {lead.number}. Перезвоним на номер "
             f"{mask_phone(chat.phone)} в течение ~{body['callback_eta_minutes']} минут."
         )
-        if self.live_chat_available:
+        if live:
             text += " Можете писать сюда — оператор ответит в этом чате."
         return text
 
@@ -566,7 +570,8 @@ class ChatService:
         return True
 
     async def _forward_to_operator(self, ctx: TurnContext) -> AsyncIterator[Event]:
-        forwarded = enqueue_chat_forward(ctx.db, ctx.user_message.id, self.routing)
+        lead = await ctx.db.get(Lead, ctx.chat.lead_id) if ctx.chat.lead_id else None
+        forwarded = await enqueue_chat_forward(ctx.db, ctx.user_message.id, self.routing, lead)
         await ctx.db.commit()
         self.on_commit()
         yield {

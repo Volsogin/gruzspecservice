@@ -103,7 +103,8 @@ class Lead(Base):
     consent_given: Mapped[bool] = mapped_column(Boolean, default=False)
     consent_at: Mapped[datetime | None] = mapped_column()
     consent_version: Mapped[str | None] = mapped_column(String(32))
-    operator_tg_message_id: Mapped[int | None] = mapped_column(BigInteger)
+    assigned_operator_id: Mapped[int | None] = mapped_column(ForeignKey("operators.id", ondelete="SET NULL"))
+    assignee_name: Mapped[str | None] = mapped_column(String(120))
     ip_hash: Mapped[str | None] = mapped_column(String(64))
     user_agent: Mapped[str | None] = mapped_column(String(300))
     created_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
@@ -117,6 +118,7 @@ class Lead(Base):
     )
     channels: Mapped[list[ClientChannel]] = relationship(back_populates="lead", cascade="all, delete-orphan")
     estimate: Mapped[Estimate | None] = relationship()
+    assigned_operator: Mapped[Operator | None] = relationship()
 
     def __str__(self) -> str:
         return f"{self.number} ({self.type})"
@@ -350,7 +352,6 @@ class ChatMessage(Base):
     mode: Mapped[str | None] = mapped_column(String(16))
     suggested_replies: Mapped[Any] = mapped_column(JSONType, default=list)
     meta: Mapped[dict[str, Any]] = mapped_column(default=dict)
-    tg_message_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     session: Mapped[ChatSession] = relationship(back_populates="messages")
@@ -365,3 +366,65 @@ class LlmUsage(Base):
     requests: Mapped[int] = mapped_column(Integer, default=0)
     prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
     completion_tokens: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Operator(Base):
+    """A dispatcher who receives leads in a private Telegram chat (registered via /operator <invite code>)."""
+
+    __tablename__ = "operators"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tg_user_id: Mapped[int] = mapped_column(BigInteger, unique=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger)
+    name: Mapped[str] = mapped_column(String(120))
+    username: Mapped[str | None] = mapped_column(String(64))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    on_shift: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    def __str__(self) -> str:
+        return f"{self.name} (@{self.username})" if self.username else self.name
+
+
+class OperatorCard(Base):
+    """A lead card message sent to an operator (DM) or to the operators group — kept in sync on every change."""
+
+    __tablename__ = "operator_cards"
+    __table_args__ = (UniqueConstraint("chat_id", "message_id", name="uq_operator_cards_chat_message"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id", ondelete="CASCADE"), index=True)
+    operator_id: Mapped[int | None] = mapped_column(ForeignKey("operators.id", ondelete="CASCADE"))
+    chat_id: Mapped[int] = mapped_column(BigInteger)
+    message_id: Mapped[int] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class TgRelay(Base):
+    """An operator-side Telegram message; a reply to it is routed back to the website chat or the client's bot chat."""
+
+    __tablename__ = "tg_relays"
+    __table_args__ = (UniqueConstraint("chat_id", "message_id", name="uq_tg_relays_chat_message"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger)
+    message_id: Mapped[int] = mapped_column(BigInteger)
+    lead_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("leads.id", ondelete="CASCADE"))
+    chat_session_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    client_chat_id: Mapped[int | None] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class TgClient(Base):
+    """A client who talks to the bot directly. The phone is trusted only when shared via Telegram's contact button."""
+
+    __tablename__ = "tg_clients"
+
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    tg_user_id: Mapped[int] = mapped_column(BigInteger)
+    username: Mapped[str | None] = mapped_column(String(64))
+    phone: Mapped[str | None] = mapped_column(String(16), index=True)
+    phone_verified_at: Mapped[datetime | None] = mapped_column()
+    pending_question_lead_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)

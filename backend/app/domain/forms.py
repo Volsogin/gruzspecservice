@@ -146,7 +146,7 @@ TELEGRAM = FieldSpec(
     FieldType.TELEGRAM,
     "Telegram (@username)",
     target="column",
-    help="Чтобы мастер мог написать вам в Telegram. Статусы в Telegram — кнопкой после отправки заявки",
+    help="Необязательно. Укажите ник и нажмите «Start» в нашем боте — статусы заявки будут приходить туда",
 )
 BRAND = FieldSpec(
     "vehicle_brand",

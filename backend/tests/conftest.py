@@ -56,9 +56,19 @@ class FakeTelegram:
         *,
         buttons: list[list[InlineButton]] | None = None,
         reply_to_message_id: int | None = None,
+        reply_keyboard: list[list[dict[str, Any]]] | None = None,
     ) -> dict[str, Any]:
         self._next_id += 1
-        self.sent.append({"chat_id": chat_id, "text": text, "buttons": buttons or [], "message_id": self._next_id})
+        self.sent.append(
+            {
+                "chat_id": chat_id,
+                "text": text,
+                "buttons": buttons or [],
+                "message_id": self._next_id,
+                "reply_to": reply_to_message_id,
+                "keyboard": reply_keyboard,
+            }
+        )
         return {"message_id": self._next_id}
 
     async def edit_message_text(

@@ -142,7 +142,7 @@ def build_container(
         geo = geocoder  # type: ignore[assignment]
 
     outbox = OutboxDispatcher(session_factory, notifiers, settings, telegram=tg)
-    bootstrap = BootstrapCache(session_factory, settings.bootstrap_cache_seconds)
+    bootstrap = BootstrapCache(session_factory, settings.bootstrap_cache_seconds, settings.bot_username)
     leads = LeadService(settings, session_factory, photos, limiter, signer, on_commit=outbox.kick)
     live = LiveChatHub()
     budget = LlmBudget(session_factory, settings.llm_daily_request_limit, settings.llm_daily_token_limit)

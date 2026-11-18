@@ -21,6 +21,7 @@ from app.db.models import (
     ChatSession,
     Lead,
     LeadStatusHistory,
+    Operator,
     OutboxMessage,
     PriceBrand,
     PriceVehicleType,
@@ -70,6 +71,7 @@ class LeadAdmin(ModelView, _ContainerAware, model=Lead):
         Lead.phone,
         Lead.vehicle_brand,
         Lead.source,
+        Lead.assignee_name,
         Lead.created_at,
     ]
     column_searchable_list: ClassVar[list[Any]] = [Lead.number, Lead.phone, Lead.name]
@@ -92,8 +94,10 @@ class LeadAdmin(ModelView, _ContainerAware, model=Lead):
         Lead.consent_at,
         Lead.consent_given,
         Lead.consent_version,
-        Lead.operator_tg_message_id,
         Lead.chat_session_id,
+        Lead.assigned_operator,
+        Lead.assigned_operator_id,
+        Lead.assignee_name,
     ]
 
     async def _change(self, request: Request, target: LeadStatus) -> Response:
@@ -136,6 +140,21 @@ class LeadAdmin(ModelView, _ContainerAware, model=Lead):
     )
     async def cancel(self, request: Request) -> Response:
         return await self._change(request, LeadStatus.CANCELLED)
+
+
+class OperatorAdmin(ModelView, model=Operator):
+    """Operators register themselves in the bot (/operator <code>); here you can switch them off or edit names."""
+
+    name, name_plural, icon = "Оператор", "Операторы", "fa-solid fa-headset"
+    can_create = False
+    column_list: ClassVar[list[Any]] = [
+        Operator.name,
+        Operator.username,
+        Operator.on_shift,
+        Operator.is_active,
+        Operator.created_at,
+    ]
+    form_columns: ClassVar[list[Any]] = [Operator.name, Operator.on_shift, Operator.is_active]
 
 
 class HistoryAdmin(ModelView, model=LeadStatusHistory):
@@ -266,6 +285,7 @@ def setup_admin(app: FastAPI, container: Container) -> Admin:
     _ContainerAware.container = container
     for view in (
         LeadAdmin,
+        OperatorAdmin,
         HistoryAdmin,
         ServiceAdmin,
         WorkTypeAdmin,

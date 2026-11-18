@@ -101,13 +101,18 @@ async def test_telegram_buttons_change_status(env: Env) -> None:
     await env.drain()
     card = env.tg.to(OPERATOR_CHAT)[0]
     labels = [b.text for row in card["buttons"] for b in row]
-    assert labels == ["✅ Принять", "✖ Отменить"]
+    assert labels == ["✋ Беру", "✖ Отменить"]  # no operators registered → the group gets the card
 
     bot = env.container.telegram_bot
     assert bot is not None
-    await bot.handle_update(_callback(lead["id"], "accepted", message_id=card["message_id"]))
-    assert env.tg.answers[-1]["text"] == "Статус: Принята мастером"
+    take = _callback(lead["id"], "accepted", message_id=card["message_id"])
+    take["callback_query"]["data"] = f"tk:{lead['id'].replace('-', '')}"
+    take["callback_query"]["from"]["first_name"] = "Мария"
+    await bot.handle_update(take)
+    assert env.tg.answers[-1]["text"] == f"Заявка {lead['number']} ваша"
+    await env.drain()
     edited = env.tg.edits[-1]
+    assert "Ответственный: Мария" in edited["text"]
     assert edited["message_id"] == card["message_id"]
     assert [b.text for row in edited["buttons"] for b in row] == ["🚚 Выехали", "🔧 В работе", "✖ Отменить"]
 
@@ -144,7 +149,7 @@ async def test_telegram_deep_link_binding(env: Env) -> None:
             },
         }
     )
-    assert lead["number"] in env.tg.to(client_chat)[-1]["text"]
+    assert any(lead["number"] in m["text"] for m in env.tg.to(client_chat))
     await bot.handle_update(
         {
             "update_id": 3,
@@ -217,7 +222,7 @@ async def test_bind_reply_without_url_button_on_localhost(env: Env) -> None:
             },
         }
     )
-    reply = env.tg.to(4242)[-1]
+    reply = env.tg.to(4242)[0]
     assert reply["buttons"] == [] and lead["tracking_url"] in reply["text"]
 
 

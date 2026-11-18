@@ -14,7 +14,7 @@ REST API сайта грузового автосервиса ООО «ГРУЗ�
 | [openapi.json](openapi.json) | контракт (генерируется `make openapi`), живой — `/docs` |
 
 Стек: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 (async) + Alembic, PostgreSQL (SQLite для локального
-запуска), SQLAdmin, httpx, Pillow. Качество: ruff, mypy `--strict`, pytest (94 теста), pre-commit, GitHub Actions.
+запуска), SQLAdmin, httpx, Pillow. Качество: ruff, mypy `--strict`, pytest (109 тестов), pre-commit, GitHub Actions.
 
 ## Быстрый старт (Linux Mint / Ubuntu)
 
@@ -126,7 +126,8 @@ docker run --rm hello-world
 |---|---|
 | `OPENROUTER_API_KEY`, `LLM_MODEL` | ассистент работает в FAQ-режиме (правила + база знаний) |
 | `TELEGRAM_BOT_TOKEN`, `BOT_USERNAME` | уведомления «в Telegram» пишутся в лог; кнопки привязки нет |
-| `OPERATOR_TG_CHAT_ID` | заявки не уходят в чат операторов (кнопки статусов и живой чат недоступны) |
+| `OPERATOR_INVITE_CODE` | операторы не могут зарегистрироваться в боте (`/operator <код>`) |
+| `OPERATOR_TG_CHAT_ID` | нет запасного общего чата: если ни один оператор не на смене, заявки в Telegram не уходят |
 | `SMTP_*` | письма сохраняются в `backend/var/mail/*.eml` (откройте любым почтовым клиентом) |
 | `OPERATOR_EMAIL` | при SMTP — письма оператору не отправляются; без SMTP — пишутся в файл на `operator@localhost` |
 | `ADMIN_TOKEN` | админка и `/api/v1/admin/*` выключены |
@@ -137,12 +138,16 @@ docker run --rm hello-world
 Адресаты уведомлений (`OPERATOR_EMAIL`, `OPERATOR_TG_CHAT_ID`) **не имеют значений по умолчанию** — тестовые
 заявки не уйдут по реквизитам с сайта-примера.
 
-### Telegram за 3 минуты
-1. @BotFather → `/newbot` → токен в `TELEGRAM_BOT_TOKEN`, имя бота (без @) в `BOT_USERNAME`.
-2. Создайте группу операторов, добавьте туда бота и отправьте в группе команду `/chatid` — бот ответит id чата
-   (отрицательное число) → `OPERATOR_TG_CHAT_ID`. Перезапустите API.
-   `https://api.telegram.org/bot<токен>/getUpdates` → `message.chat.id` (отрицательное число) → `OPERATOR_TG_CHAT_ID`.
-3. Перезапустите API. Бот работает через long polling (`TELEGRAM_MODE=polling`), публичный URL не нужен.
+### Telegram: бот для клиентов и операторов
+1. @BotFather → `/newbot` → токен в `TELEGRAM_BOT_TOKEN`, юзернейм (без @) в `BOT_USERNAME`.
+   Там же `/setprivacy` → Disable (чтобы бот видел ответы операторов в группе).
+2. Придумайте `OPERATOR_INVITE_CODE` и перезапустите API. Каждый оператор пишет боту `/operator <код>` —
+   новые заявки будут приходить ему в личку. `/smena` — включить/выключить приём заявок, `/moi` — мои заявки.
+3. По желанию — запасная группа: добавьте бота в группу, отправьте там `/chatid` → `OPERATOR_TG_CHAT_ID`.
+   Туда идут заявки, когда ни один оператор не на смене.
+4. Бот работает через long polling (`TELEGRAM_MODE=polling`), публичный URL не нужен.
+
+Как это работает — в [ARCHITECTURE.md](ARCHITECTURE.md#telegram).
 
 **Если Telegram недоступен с сервера** — задайте `TELEGRAM_PROXY_URL`: прокси используется только для
 Telegram (2ГИС, OpenRouter и почта идут напрямую). Для v2rayN/xray на той же машине:

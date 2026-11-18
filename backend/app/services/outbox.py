@@ -19,10 +19,12 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import Settings
 from app.db.base import utcnow
-from app.db.models import ChatMessage, Lead, OutboxMessage
-from app.integrations.notifiers.base import Notifier, OutgoingMessage, SendError
+from app.db.models import ChatMessage, Lead, OperatorCard, OutboxMessage, TgRelay
+from app.domain.statuses import status_label
+from app.integrations.notifiers.base import InlineButton, Notifier, OutgoingMessage, SendError
 from app.integrations.notifiers.telegram import TelegramClient
 from app.services import notifications as n
+from app.services.operators import card_buttons
 from app.services.site_settings import load_settings
 
 logger = logging.getLogger(__name__)
@@ -53,6 +55,8 @@ class OutboxDispatcher:
             n.OPERATOR_CHAT_MESSAGE: self._operator_chat_message,
             n.CLIENT_LEAD_CREATED: self._client_lead_created,
             n.CLIENT_STATUS_CHANGED: self._client_status_changed,
+            n.OPERATOR_CLIENT_MESSAGE: self._operator_client_message,
+            n.CLIENT_OPERATOR_REPLY: self._client_operator_reply,
         }
 
     def kick(self) -> None:
@@ -146,21 +150,23 @@ class OutboxDispatcher:
         return lead
 
     # --- handlers --------------------------------------------------------------------------------
+    async def _send_tg(self, to: str, html_text: str, buttons: list[list[InlineButton]] | None = None) -> int | None:
+        result = await self._notifier("telegram").send(
+            OutgoingMessage(channel="telegram", recipient=to, text="", html=html_text, buttons=buttons or [])
+        )
+        return int(result.external_id) if result.external_id and result.external_id.isdigit() else None
+
     async def _operator_lead_created(self, session: AsyncSession, msg: OutboxMessage) -> None:
         lead = await self._load_lead(session, msg)
         to = str(msg.payload["to"])
         if msg.channel == "telegram":
-            result = await self._notifier("telegram").send(
-                OutgoingMessage(
-                    channel="telegram",
-                    recipient=to,
-                    text="",
-                    html=n.render_operator_lead(lead, self.settings, html_mode=True),
-                    buttons=n.operator_buttons(lead),
+            operator_id = msg.payload.get("operator_id")
+            buttons = card_buttons(lead, card_operator_id=operator_id, is_group=operator_id is None)
+            message_id = await self._send_tg(to, n.render_operator_lead(lead, self.settings, html_mode=True), buttons)
+            if message_id is not None:
+                session.add(
+                    OperatorCard(lead_id=lead.id, operator_id=operator_id, chat_id=int(to), message_id=message_id)
                 )
-            )
-            if result.external_id and result.external_id.isdigit():
-                lead.operator_tg_message_id = int(result.external_id)
             return
         text = n.render_operator_lead(lead, self.settings, html_mode=False)
         subject = f"Новая заявка {lead.number}: {lead.type} — {lead.vehicle_brand or ''}".strip(" —")
@@ -169,31 +175,58 @@ class OutboxDispatcher:
         )
 
     async def _operator_lead_refresh(self, session: AsyncSession, msg: OutboxMessage) -> None:
+        """Keep every operator card of the lead in sync; one broken card must not block the others."""
         lead = await self._load_lead(session, msg)
-        if self.telegram is None or not lead.operator_tg_message_id:
+        if self.telegram is None:
             return
-        await self.telegram.edit_message_text(
-            msg.payload["to"],
-            lead.operator_tg_message_id,
-            n.render_operator_lead(lead, self.settings, html_mode=True),
-            n.operator_buttons(lead),
-        )
+        text = n.render_operator_lead(lead, self.settings, html_mode=True)
+        cards = (await session.scalars(select(OperatorCard).where(OperatorCard.lead_id == lead.id))).all()
+        for card in cards:
+            buttons = card_buttons(lead, card_operator_id=card.operator_id, is_group=card.operator_id is None)
+            try:
+                await self.telegram.edit_message_text(card.chat_id, card.message_id, text, buttons)
+            except SendError as exc:
+                logger.warning(
+                    "operator_card_refresh_failed", extra={"lead_number": lead.number, "error": str(exc)[:200]}
+                )
 
     async def _operator_chat_message(self, session: AsyncSession, msg: OutboxMessage) -> None:
         chat_msg = await session.get(ChatMessage, int(msg.payload["chat_message_id"]))
         if chat_msg is None:
             raise SendError("chat message not found", permanent=True)
-        header = f"💬 Чат {chat_msg.session_id.hex[:8]} — ответьте реплаем на это сообщение"
-        result = await self._notifier("telegram").send(
-            OutgoingMessage(
-                channel="telegram",
-                recipient=str(msg.payload["to"]),
-                text="",
-                html=f"<b>{n._e(header)}</b>\n{n._e(chat_msg.content)}",
+        header = f"💬 Чат с сайта {chat_msg.session_id.hex[:8]} — ответьте реплаем, ответ уйдёт на сайт"
+        to = str(msg.payload["to"])
+        message_id = await self._send_tg(to, f"<b>{n._e(header)}</b>\n{n._e(chat_msg.content)}")
+        if message_id is not None:
+            session.add(TgRelay(chat_id=int(to), message_id=message_id, chat_session_id=chat_msg.session_id))
+
+    async def _operator_client_message(self, session: AsyncSession, msg: OutboxMessage) -> None:
+        lead = await self._load_lead(session, msg)
+        to, payload = str(msg.payload["to"]), msg.payload
+        if payload.get("message_type") == "cancelled":
+            header = f"✖ Клиент отменил заявку {lead.number} в Telegram"
+        else:
+            header = f"❓ Вопрос клиента по заявке {lead.number} ({status_label(lead.status)})"
+        hint = "<i>Ответьте реплаем — ответ придёт клиенту в бот.</i>"
+        body = f"<b>{n._e(header)}</b>\n{n._e(payload.get('text', ''))}\n\n{hint}"
+        message_id = await self._send_tg(to, body)
+        if message_id is not None:
+            session.add(
+                TgRelay(
+                    chat_id=int(to),
+                    message_id=message_id,
+                    lead_id=lead.id,
+                    client_chat_id=int(payload["client_chat_id"]),
+                )
             )
+
+    async def _client_operator_reply(self, session: AsyncSession, msg: OutboxMessage) -> None:
+        lead = await self._load_lead(session, msg)
+        text = (
+            f"💬 <b>Оператор по заявке {n._e(lead.number)}</b>:\n{n._e(msg.payload.get('text', ''))}\n\n"
+            "<i>Чтобы ответить, просто напишите сообщение.</i>"
         )
-        if result.external_id and result.external_id.isdigit():
-            chat_msg.tg_message_id = int(result.external_id)
+        await self._send_tg(str(msg.payload["to"]), text)
 
     async def _client_lead_created(self, session: AsyncSession, msg: OutboxMessage) -> None:
         lead = await self._load_lead(session, msg)
