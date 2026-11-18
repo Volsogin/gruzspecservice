@@ -136,6 +136,8 @@ async def test_reviews_and_cases(env: Env) -> None:
     summary = (await env.client.get("/api/v1/reviews/summary")).json()
     assert 4 <= summary["average_rating"] <= 5 and summary["total"] == 10
     assert summary["review_links"]["yandex"].startswith("https://yandex.ru/")
+    assert summary["review_links"]["2gis"] == "https://2gis.ru/saratov/firm/70000001089127839/tab/reviews"
+    assert summary["review_links"]["placeholders"] == ["yandex"]
     with_case = next(r for r in page["items"] if r["has_case"])
     case = (await env.client.get(f"/api/v1/cases/{with_case['case_id']}")).json()
     assert case["photos"]["before"] and case["photos"]["after"] and case["work_done"]

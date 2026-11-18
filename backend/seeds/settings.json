@@ -74,10 +74,10 @@
   "review_links": {
     "value": {
       "yandex": "https://yandex.ru/maps/org/PLACEHOLDER/reviews/",
-      "2gis": "https://2gis.ru/saratov/firm/PLACEHOLDER/tab/reviews",
-      "is_placeholder": true
+      "2gis": "https://2gis.ru/saratov/firm/70000001089127839/tab/reviews",
+      "placeholders": ["yandex"]
     },
-    "description": "Кнопки «Отзывы на Яндексе» и «Отзывы на 2ГИС» (подставить реальные ссылки)"
+    "description": "Кнопки «Отзывы на Яндексе» и «Отзывы на 2ГИС»; placeholders — ссылки, которые ещё не заменены реальными"
   },
   "dispatch": {
     "value": {

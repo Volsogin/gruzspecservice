@@ -120,6 +120,7 @@ uuid+хэш, ключи хранилища проверяются против �
 | `FileEmailNotifier` | без `SMTP_HOST` письма пишутся в `.eml` | задать `SMTP_*` |
 | `LogNotifier` | без `TELEGRAM_BOT_TOKEN` «Telegram»-уведомления пишутся в лог | задать токен и чат |
 | FAQ-режим чата | без `OPENROUTER_API_KEY` | задать ключ |
-| `settings.review_links`, `messengers` | ссылки-плейсхолдеры (`is_placeholder: true`) | правка в админке «Настройки сайта» |
+| `settings.review_links.yandex` | ссылка-заглушка (перечислена в `review_links.placeholders`); ссылка 2ГИС уже реальная | правка в админке «Настройки сайта» |
+| `settings.messengers` | ссылки-плейсхолдеры (`is_placeholder: true`) | правка в админке «Настройки сайта» |
 | `legal.privacy_text` | текст политики — заглушка (`is_placeholder: true`) | правка в админке |
 | `address.lat/lon` | центр Саратова | `make geocode-sto` |

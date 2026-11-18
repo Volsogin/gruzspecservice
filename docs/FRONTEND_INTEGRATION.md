@@ -110,7 +110,7 @@ GET /orders/{token} → {number, status, status_label, is_cancelled,
 
 ## 7. Отзывы и «до/после»
 `GET /reviews/summary` → средний рейтинг и `review_links.yandex` / `review_links["2gis"]` для кнопок
-«Отзывы на Яндексе» / «Отзывы на 2ГИС» (открывать в новой вкладке). `GET /reviews?limit=10` — лента.
+«Отзывы на Яндексе» / «Отзывы на 2ГИС» (открывать в новой вкладке). Ключи из `review_links.placeholders` — ещё заглушки: такую кнопку лучше не показывать. `GET /reviews?limit=10` — лента.
 Если у отзыва `has_case: true` → при раскрытии `GET /cases/{case_id}` → `photos.before[] / photos.after[]`
 (`preview_url` в карточке, `url` — полноразмерное), `work_done[]`, `duration_hours`, `vehicle`.
 Все seed-отзывы — `is_demo: true`.
