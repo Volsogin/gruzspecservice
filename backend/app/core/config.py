@@ -99,6 +99,9 @@ class Settings(BaseSettings):
     admin_token: SecretStr | None = None
 
     # --- LLM (OpenRouter) ------------------------------------------------------------
+    # OpenRouter answers 403 to Russian IPs: on a laptop in Russia point this at a local proxy
+    # (v2rayN: http://127.0.0.1:10809); on a server abroad leave it empty.
+    llm_proxy_url: str | None = None
     openrouter_api_key: SecretStr | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     llm_model: str = "deepseek/deepseek-v4-flash"
@@ -142,6 +145,7 @@ class Settings(BaseSettings):
         "bot_username",
         "max_bot_username",
         "telegram_proxy_url",
+        "llm_proxy_url",
         mode="before",
     )
     @classmethod

@@ -35,8 +35,10 @@ class OpenRouterProvider:
         timeout: float = 25.0,
         app_url: str | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
+        proxy: str | None = None,
     ) -> None:
         self._api_key = api_key
+        self._proxy = proxy
         self.model = model
         self.fallback_models = [m for m in (fallback_models or []) if m and m != model]
         self._url = f"{base_url.rstrip('/')}/chat/completions"
@@ -83,7 +85,9 @@ class OpenRouterProvider:
         model: str | None = None
         try:
             async with (
-                httpx.AsyncClient(timeout=self._timeout, transport=self._transport, trust_env=False) as client,
+                httpx.AsyncClient(
+                    timeout=self._timeout, transport=self._transport, proxy=self._proxy, trust_env=False
+                ) as client,
                 client.stream("POST", self._url, json=self._payload(request), headers=headers) as resp,
             ):
                 if resp.status_code != 200:

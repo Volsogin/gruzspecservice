@@ -125,6 +125,7 @@ def build_container(
                 base_url=settings.openrouter_base_url,
                 timeout=settings.llm_timeout_seconds,
                 app_url=settings.public_base_url,
+                proxy=settings.llm_proxy_url,
             )
             if settings.openrouter_api_key
             else None

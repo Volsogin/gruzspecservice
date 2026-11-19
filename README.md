@@ -122,7 +122,7 @@ make web
 **Сайт:** React 18 · TypeScript · Vite · React Router · 2ГИС MapGL.
 **API:** Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 (async) + Alembic · PostgreSQL / SQLite · SQLAdmin ·
 httpx · Pillow · OpenRouter · Telegram Bot API · 2ГИС. **Деплой:** Docker (многоэтапная сборка) · Caddy.
-Качество: ruff, mypy `--strict`, pytest (118 тестов), `tsc --strict`, pre-commit, GitHub Actions.
+Качество: ruff, mypy `--strict`, pytest (120 тестов), `tsc --strict`, pre-commit, GitHub Actions.
 
 ## Документация
 

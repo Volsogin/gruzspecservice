@@ -84,7 +84,8 @@ url = f"https://{domain}"
 for k, v in {
     "APP_ENV": "prod", "DOMAIN": domain, "PUBLIC_BASE_URL": url, "API_BASE_URL": url, "CORS_ORIGINS": url,
     "LOG_JSON": "true",
-    "TELEGRAM_PROXY_URL": "",  # прокси v2rayN есть только на ноутбуке; сервер ходит в Telegram напрямую
+    # прокси v2rayN есть только на ноутбуке; сервер за рубежом ходит в Telegram и OpenRouter напрямую
+    "TELEGRAM_PROXY_URL": "", "LLM_PROXY_URL": "",
 }.items():
     put(k, v)
 if not get("SECRET_KEY"):

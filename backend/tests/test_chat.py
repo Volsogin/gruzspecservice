@@ -5,11 +5,21 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import httpx
 import pytest
 from sqlalchemy import select
 
 from app.db.models import ChatSession, Lead
-from app.integrations.llm.base import Finished, LLMUnavailable, TextDelta, ToolCall, ToolCallsRequested, Usage
+from app.integrations.llm.base import (
+    ChatRequest,
+    Finished,
+    LLMUnavailable,
+    TextDelta,
+    ToolCall,
+    ToolCallsRequested,
+    Usage,
+)
+from app.integrations.llm.openrouter import OpenRouterProvider
 from tests.conftest import OPERATOR_CHAT, Env
 
 
@@ -276,3 +286,21 @@ async def test_empty_model_reply_after_tool_is_filled_from_tool_result(env: Env)
     sid = await _session(env)
     done = _done(await _say(env, sid, "Сколько стоят тормоза на MAN?"))
     assert done["text"].startswith("Ориентировочно от 4 800 ₽") and "условные" in done["text"]
+
+
+async def test_openrouter_uses_explicit_proxy_not_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """OpenRouter blocks Russian IPs: the provider uses LLM_PROXY_URL and ignores desktop proxy env vars."""
+    monkeypatch.setenv("ALL_PROXY", "socks://127.0.0.1:10808/")
+    real = httpx.AsyncClient
+    seen: list[tuple[object, object]] = []
+
+    def spy(*args: object, **kwargs: object) -> httpx.AsyncClient:
+        seen.append((kwargs.get("proxy"), kwargs.get("trust_env", True)))
+        kwargs.pop("proxy", None)
+        kwargs["transport"] = httpx.MockTransport(lambda request: httpx.Response(200, text="data: [DONE]\n\n"))
+        return real(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("app.integrations.llm.openrouter.httpx.AsyncClient", spy)
+    provider = OpenRouterProvider("k", "m", proxy="http://127.0.0.1:10809")
+    [ev async for ev in provider.stream(ChatRequest(messages=[{"role": "user", "content": "hi"}]))]
+    assert seen == [("http://127.0.0.1:10809", False)]
