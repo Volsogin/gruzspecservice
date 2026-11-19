@@ -100,6 +100,11 @@ export function MapZone({ mode, initial, onPick, onClose }: Props) {
 
   const locate = (e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (!window.isSecureContext) {
+      // Browsers only allow geolocation over HTTPS (or on localhost).
+      setLocErr('Местоположение доступно только по HTTPS — отметьте точку на карте или найдите адрес');
+      return;
+    }
     if (!navigator.geolocation) {
       setLocErr('Браузер не даёт определить местоположение — отметьте точку на карте');
       return;

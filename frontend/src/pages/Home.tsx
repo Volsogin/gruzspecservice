@@ -71,7 +71,7 @@ export function Home() {
         <div style={s('position:absolute;inset:0;background:linear-gradient(244.6deg, rgba(0,0,0,0.2) 22.6%, rgba(102,102,102,0.2) 96.9%), linear-gradient(rgba(30,30,30,0.8),rgba(30,30,30,0.8))')} />
         <div style={s('position:relative;display:flex;flex-wrap:wrap;gap:28px;padding:clamp(20px,2vw,28px) clamp(16px,1.7vw,24px) clamp(28px,3vw,40px)')}>
           <div style={s('flex:1 1 360px;max-width:440px;display:flex;flex-direction:column;gap:18px')}>
-            <span style={s('font-family:K2D,Jost,sans-serif;font-weight:100;font-size:clamp(44px,4.45vw,64px);line-height:1')}>ГрузСпецСервис Автосервис</span>
+            <span style={s('font-family:K2D,Jost,sans-serif;font-weight:500;font-size:clamp(44px,4.45vw,64px);line-height:1')}>ГрузСпецСервис Автосервис</span>
             <h1 style={s("margin:0;font-family:'Josefin Sans',Jost,sans-serif;font-weight:300;font-size:clamp(20px,1.7vw,24px);line-height:1.2;text-wrap:pretty")}>Ремонт грузовиков и спецтехники 24/7 — на СТО и с выездом к месту поломки</h1>
             <div style={s('display:flex;flex-wrap:wrap;gap:10px')}>
               {rating ? (
@@ -205,13 +205,9 @@ export function Home() {
         <div style={s('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:40px 24px;padding:0 clamp(16px,2vw,24px) clamp(48px,6vw,96px)')}>
           {advantages.map((a) => (
             <div key={a.t} style={s('display:flex;gap:16px;align-items:center')}>
-              {a.n <= 4 ? (
-                <div aria-hidden="true" style={sx('width:clamp(110px,13vw,190px);aspect-ratio:1;flex:none;filter:invert(1) grayscale(1);mix-blend-mode:screen', { background: `url(/assets/num-${a.n}.webp) center / cover no-repeat` })} />
-              ) : (
-                <div aria-hidden="true" style={s('width:clamp(110px,13vw,190px);aspect-ratio:1;flex:none;display:flex;align-items:center;justify-content:center;font-family:K2D,Jost,sans-serif;font-weight:100;font-size:clamp(88px,10vw,150px);line-height:1;color:rgb(214,214,214)')}>
-                  {a.n}
-                </div>
-              )}
+              <div aria-hidden="true" style={s('width:clamp(110px,13vw,190px);aspect-ratio:1;flex:none;display:flex;align-items:center;justify-content:center;font-family:K2D,Jost,sans-serif;font-weight:100;font-size:clamp(88px,10vw,150px);line-height:1;color:rgb(214,214,214)')}>
+                {a.n}
+              </div>
               <div style={s('display:flex;flex-direction:column;gap:6px')}>
                 <span style={s("font-family:'Josefin Sans',Jost,sans-serif;font-weight:600;font-size:clamp(18px,1.6vw,22px);line-height:1.05")}>{a.t}</span>
                 <span style={s("font-family:'Josefin Sans',Jost,sans-serif;font-weight:300;font-size:clamp(17px,1.6vw,22px);line-height:1.1;color:rgb(214,214,214)")}>{a.d}</span>

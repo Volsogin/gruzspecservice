@@ -47,6 +47,7 @@ interface Props {
 }
 
 const KM_PER_DEG_LAT = 111.32;
+const FOCUS_ZOOM = 15;
 
 function stoHtml(label: string): string {
   return `<div style="width:160px;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none">
@@ -100,9 +101,12 @@ export function DgisMap(props: Props) {
             color: '#cc151724',
             strokeColor: '#cc1517b3',
             strokeWidth: 2,
+            // Circles are interactive by default and swallow clicks: the map's `click` never fired inside
+            // the zone, so the point could not be picked exactly where the 30-minute promise applies.
+            interactive: false,
           });
         }
-        new mapgl.HtmlMarker(map, { coordinates: [center.lon, center.lat], html: stoHtml(stoLabel), anchor: [80, 20], zIndex: 1 });
+        new mapgl.HtmlMarker(map, { coordinates: [center.lon, center.lat], html: stoHtml(stoLabel), anchor: [80, 20], zIndex: 1, interactive: false });
         map.on('click', (e) => {
           const [lon, lat] = e.lngLat;
           pickRef.current?.({ lat, lon });
@@ -131,12 +135,15 @@ export function DgisMap(props: Props) {
       return;
     }
     if (pinRef.current) pinRef.current.setCoordinates([point.lon, point.lat]);
-    else pinRef.current = new mapgl.HtmlMarker(map, { coordinates: [point.lon, point.lat], html: PIN_HTML, anchor: [17, 42], zIndex: 2 });
+    else pinRef.current = new mapgl.HtmlMarker(map, { coordinates: [point.lon, point.lat], html: PIN_HTML, anchor: [17, 42], zIndex: 2, interactive: false });
   }, [ready, point?.lat, point?.lon]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const map = mapRef.current;
-    if (ready && map && point && focusKey) map.setCenter([point.lon, point.lat], { duration: 600 });
+    if (!ready || !map || !point || !focusKey) return;
+    // After search / geolocation zoom in, so the point can be refined with a tap on the right street.
+    map.setCenter([point.lon, point.lat], { duration: 600 });
+    if (map.getZoom() < FOCUS_ZOOM) map.setZoom(FOCUS_ZOOM, { duration: 600 });
   }, [focusKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const label = zoneLabel ? (

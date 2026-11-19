@@ -83,7 +83,7 @@ class OpenRouterProvider:
         model: str | None = None
         try:
             async with (
-                httpx.AsyncClient(timeout=self._timeout, transport=self._transport) as client,
+                httpx.AsyncClient(timeout=self._timeout, transport=self._transport, trust_env=False) as client,
                 client.stream("POST", self._url, json=self._payload(request), headers=headers) as resp,
             ):
                 if resp.status_code != 200:

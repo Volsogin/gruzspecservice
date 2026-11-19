@@ -95,11 +95,13 @@ class DgisGeocoder:
         self._cache = _TTLCache()
 
     async def _request(self, params: dict[str, Any]) -> list[GeoResult]:
+        # trust_env=False: desktop VPN clients export proxy variables (e.g. ALL_PROXY=socks://…) that httpx
+        # can't parse; 2GIS is reachable directly, so the process environment must not affect it.
         cache_key = repr(sorted(params.items()))
         if (cached := self._cache.get(cache_key)) is not None:
             return cached
         try:
-            async with httpx.AsyncClient(timeout=self._timeout, transport=self._transport) as client:
+            async with httpx.AsyncClient(timeout=self._timeout, transport=self._transport, trust_env=False) as client:
                 resp = await client.get(self._url, params={**params, "key": self._key})
         except httpx.HTTPError:
             raise UpstreamError("Геокодер 2ГИС недоступен", code="geocoder_unavailable") from None

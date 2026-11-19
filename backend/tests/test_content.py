@@ -197,3 +197,22 @@ async def test_dgis_geocoder_parsing_with_mock() -> None:
     await geo.geocode("Саратов, Автокомбинатовская 15")  # cached
     assert len(calls) == 1
     assert calls[0].url.path == "/3.0/items/geocode" and calls[0].url.params["fields"] == "items.point"
+
+
+async def test_geocoder_ignores_desktop_proxy_variables(monkeypatch: pytest.MonkeyPatch) -> None:
+    """v2rayN & co. export ALL_PROXY=socks://…, which httpx rejects: the geocoder must not read env proxies."""
+    monkeypatch.setenv("ALL_PROXY", "socks://127.0.0.1:10808/")
+    real = httpx.AsyncClient
+    seen: list[object] = []
+
+    def spy(*args: object, **kwargs: object) -> httpx.AsyncClient:
+        seen.append(kwargs.get("trust_env", True))
+        kwargs.pop("transport", None)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json={"meta": {"code": 200}, "result": {"items": []}})
+        )
+        return real(*args, transport=transport, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("app.integrations.geocoder.dgis.httpx.AsyncClient", spy)
+    assert await DgisGeocoder("k").reverse(51.5, 46.0) == []
+    assert seen == [False]

@@ -112,7 +112,8 @@ make web
 ## Деплой
 
 - **Тест на ноутбуке (Linux Mint):** `make preview` — сайт и API на :8000, открывается с телефона в той же Wi-Fi.
-- **Сервер Ubuntu 24.04:** `make prod-up` — PostgreSQL + сайт/API + Caddy с автоматическим HTTPS на вашем домене.
+- **Сервер Ubuntu 24.04:** одна команда — [`deploy/setup-ubuntu.sh`](deploy/setup-ubuntu.sh) ставит Docker и firewall,
+  поднимает PostgreSQL + сайт/API + Caddy с автоматическим HTTPS (`make prod-up`) и ночные бэкапы.
 
 Пошагово (VPS, Docker, DNS, `.env`, обновления, бэкапы) — [docs/DEPLOY.md](docs/DEPLOY.md).
 

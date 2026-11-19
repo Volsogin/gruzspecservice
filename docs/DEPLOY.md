@@ -16,6 +16,45 @@
 | Тест на ноутбуке с Docker | `make up` → <http://localhost:8000> | PostgreSQL | — |
 | Сервер Ubuntu 24.04 | `make prod-up` → `https://ваш-домен.ru` | PostgreSQL | Caddy, Let's Encrypt |
 
+## 0. Быстрый путь: сервер одной командой
+
+Нужно: VPS с Ubuntu 24.04 (2 vCPU, 2 ГБ RAM), его IP и root-пароль/SSH-ключ, домен в Cloudflare.
+
+1. **Cloudflare → DNS → Add record:** тип `A`, имя `@`, IPv4 = IP сервера, прокси **DNS only** (серое облако).
+2. **На ноутбуке**, из папки проекта — отправить свой `.env` (ключи Telegram, 2ГИС, OpenRouter) на сервер:
+
+   ```bash
+   scp .env root@IP_СЕРВЕРА:/root/gruzspec.env
+   ```
+
+3. **Зайти на сервер:**
+
+   ```bash
+   ssh root@IP_СЕРВЕРА
+   ```
+
+4. **На сервере** — всё остальное делает [deploy/setup-ubuntu.sh](../deploy/setup-ubuntu.sh):
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/Volsogin/gruzspecservice/main/deploy/setup-ubuntu.sh -o setup.sh && bash setup.sh ваш-домен.ru
+   ```
+
+   Ставит Docker, firewall (SSH/80/443) и автообновления; кладёт код в `/opt/gruzspecservice`; делает из вашего
+   `.env` продовый (`APP_ENV=prod`, адреса `https://домен`, новые `SECRET_KEY`/пароль БД, без прокси v2rayN);
+   запускает `make prod-up`; включает ночной бэкап; ждёт, пока заработает HTTPS.
+
+5. **Остановить бот на ноутбуке** (`Ctrl+C` в окне `make dev`/`make preview`): один Telegram-бот может работать
+   только в одном месте, иначе сервер получит `409 Conflict`.
+6. В кабинете 2ГИС добавьте домен в ограничения ключа MapGL.
+
+Обновление после новых коммитов — на сервере:
+
+```bash
+cd /opt/gruzspecservice && git pull && make prod-up
+```
+
+Ниже — то же самое по шагам, с объяснениями.
+
 ---
 
 ## 1. Тестовый деплой на ноутбуке (Linux Mint 22 / Ubuntu 24)

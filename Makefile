@@ -4,7 +4,8 @@ UV ?= uv
 BE := cd backend &&
 FE := cd frontend &&
 COMPOSE := UID=$$(id -u) GID=$$(id -g) docker compose
-PROD := $(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml
+# Prod: the container user stays UID 1000 (data lives in named volumes), so it also works when run as root
+PROD := docker compose -f docker-compose.yml -f docker-compose.prod.yml
 # `make preview`: адрес, по которому сайт откроют другие (телефон в той же Wi-Fi, туннель)
 PUBLIC_URL ?= http://localhost:$(PORT)
 HOST ?= 0.0.0.0
