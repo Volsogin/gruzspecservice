@@ -51,7 +51,11 @@ jobs:
           curl -sf http://localhost:8000/order/$TOKEN | grep -q 'id="root"'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/v1/nope)" = 404
       - name: Production override is valid
-        run: DOMAIN=example.com docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
+        run: |
+          DOMAIN=example.com docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
+          DOMAIN=example.com COMPOSE_PROFILES=proxy docker compose -f docker-compose.yml -f docker-compose.prod.yml config --services | grep -qx proxy
+          python3 deploy/proxy-config.py 'vless://11111111-2222-3333-4444-555555555555@vpn.example.com:443?type=xhttp&security=tls&path=%2Fx#ci'
+          docker run --rm -v "$PWD/deploy/xray/config.json:/etc/xray/config.json:ro" ghcr.io/xtls/xray-core:26.10.31 run -test -c /etc/xray/config.json
       - name: Restart keeps data (migrations + seed are idempotent)
         run: |
           docker compose restart api

@@ -29,6 +29,18 @@ services:
     restart: unless-stopped
     logging: *logs
 
+  # Необязательно: VLESS-прокси для Telegram и OpenRouter, если VPS в России.
+  # Включается COMPOSE_PROFILES=proxy в .env; конфиг — `python3 deploy/proxy-config.py 'vless://…'`.
+  # Порт наружу не публикуется: API ходит в него по адресу http://proxy:10809 внутри Docker-сети.
+  proxy:
+    image: ghcr.io/xtls/xray-core:26.10.31
+    profiles: ["proxy"]
+    command: ["run", "-c", "/etc/xray/config.json"]
+    volumes:
+      - ./deploy/xray/config.json:/etc/xray/config.json:ro
+    restart: unless-stopped
+    logging: *logs
+
 volumes:
   caddy_data:
   caddy_config:

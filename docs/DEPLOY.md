@@ -19,9 +19,12 @@
 ## 0. Быстрый путь: сервер одной командой
 
 Нужно: VPS с Ubuntu 24.04 (2 vCPU, 2 ГБ RAM), его IP и root-пароль/SSH-ключ, домен в Cloudflare.
-VPS берите **за пределами России** (Нидерланды, Германия, Финляндия и т. п.): OpenRouter отвечает `403` на
-российские IP, а Telegram API из РФ работает нестабильно. Скрипт ниже убирает из `.env` прокси ноутбука
-(`TELEGRAM_PROXY_URL`, `LLM_PROXY_URL`) — на таком сервере они не нужны.
+**Где VPS.** OpenRouter отвечает `403` на российские IP, а Telegram API из РФ работает нестабильно. Поэтому:
+- **VPS за рубежом** (Нидерланды, Германия, Финляндия…) — проще всего: всё работает напрямую, прокси не нужен;
+- **VPS в России** — передайте скрипту свою ссылку `vless://…` (VLESS + XHTTP/WS/gRPC/TCP, TLS или REALITY):
+  рядом с сайтом поднимется контейнер `proxy` (Xray), и **только** Telegram и OpenRouter пойдут через него.
+  2ГИС, почта и посетители сайта ходят напрямую. Ссылку берите в своём клиенте (v2rayN → сервер → «Поделиться»
+  / «Экспорт ссылки»). Hysteria не нужна — достаточно VLESS.
 
 1. **Cloudflare → DNS → Add record:** тип `A`, имя `@`, IPv4 = IP сервера, прокси **DNS only** (серое облако).
 2. **На ноутбуке**, из папки проекта — отправить свой `.env` (ключи Telegram, 2ГИС, OpenRouter) на сервер:
@@ -41,6 +44,16 @@ VPS берите **за пределами России** (Нидерланды,
    ```bash
    curl -fsSL https://raw.githubusercontent.com/Volsogin/gruzspecservice/main/deploy/setup-ubuntu.sh -o setup.sh && bash setup.sh ваш-домен.ru
    ```
+
+   **VPS в России** — сначала положите ссылку VLESS в файл (так она не останется в истории команд):
+
+   ```bash
+   nano /root/vless.txt
+   ```
+
+   вставьте `vless://…`, сохраните (`Ctrl+O`, `Enter`, `Ctrl+X`) и запустите ту же команду `bash setup.sh ваш-домен.ru` —
+   скрипт сам найдёт файл, соберёт конфиг Xray и включит прокси. В конце он проверит, что Telegram и OpenRouter
+   отвечают (✅/❌).
 
    Ставит Docker, firewall (SSH/80/443) и автообновления; кладёт код в `/opt/gruzspecservice`; делает из вашего
    `.env` продовый (`APP_ENV=prod`, адреса `https://домен`, новые `SECRET_KEY`/пароль БД, без прокси v2rayN);
@@ -290,6 +303,22 @@ gunzip -c backups/ФАЙЛ.sql.gz | docker compose -f docker-compose.yml -f dock
 - [ ] `ADMIN_TOKEN`, `SECRET_KEY`, `POSTGRES_PASSWORD` — случайные, `.env` с правами `600`.
 - [ ] Заменены демо-данные: отзывы, статистика, ссылка на Яндекс, текст политики ПДн (админка → «Настройки»).
 
+## Прокси для Telegram и OpenRouter (VPS в России)
+
+Как устроено: [deploy/proxy-config.py](../deploy/proxy-config.py) превращает ссылку `vless://…` в конфиг Xray
+(`deploy/xray/config.json`, в git не попадает — там ваш UUID), а [docker-compose.prod.yml](../docker-compose.prod.yml)
+запускает контейнер `proxy` (официальный образ `ghcr.io/xtls/xray-core`) при `COMPOSE_PROFILES=proxy` в `.env`.
+API ходит в него по `http://proxy:10809` — это `TELEGRAM_PROXY_URL` и `LLM_PROXY_URL`. Порт наружу не открыт.
+
+Сменить сервер VLESS:
+
+```bash
+cd /opt/gruzspecservice && python3 deploy/proxy-config.py 'vless://новая-ссылка' && make prod-up
+```
+
+Логи прокси: `docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f proxy`.
+Выключить прокси: в `.env` очистите `COMPOSE_PROFILES`, `TELEGRAM_PROXY_URL`, `LLM_PROXY_URL` и выполните `make prod-up`.
+
 ## Если что-то не работает
 
 | Симптом | Причина и решение |
@@ -298,5 +327,6 @@ gunzip -c backups/ФАЙЛ.sql.gz | docker compose -f docker-compose.yml -f dock
 | `502` от Caddy | контейнер api не поднялся: `make prod-logs`, часто — ошибка в `.env` |
 | Вместо карты схема «карта 2ГИС появится после настройки ключа» | пустой `DGIS_MAPGL_KEY` или домен не добавлен в ограничения ключа |
 | Поиск адреса «недоступен» | пустой `DGIS_API_KEY` (серверный ключ геокодера) |
+| Чат отвечает шаблонами (режим FAQ) | OpenRouter недоступен: с российского IP он отвечает `403` — нужен `LLM_PROXY_URL` (на ноутбуке — v2rayN, на сервере — раздел про прокси) |
 | Бот молчит, в логах `409 Conflict` | бот запущен ещё где-то (ноутбук) с тем же токеном — остановите второй процесс |
 | После смены настроек сайт показывает старое | `/bootstrap` кэшируется до минуты в браузере — обновите страницу через минуту |

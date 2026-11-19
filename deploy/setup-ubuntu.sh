@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # Сервер с нуля одной командой: Ubuntu 24.04, от root.
-#   bash setup-ubuntu.sh ваш-домен.ru
+#   bash setup-ubuntu.sh ваш-домен.ru                    # VPS за рубежом: Telegram и OpenRouter напрямую
+#   bash setup-ubuntu.sh ваш-домен.ru 'vless://…'        # VPS в России: они пойдут через ваш VLESS
+# Ссылку можно не писать в команде, а положить в файл /root/vless.txt (тогда она не попадёт в историю shell).
 # Что делает: Docker + firewall + автообновления → код в /opt/gruzspecservice → .env для прода
 # (берёт ваш локальный .env из /root/gruzspec.env, если вы его туда скопировали) → make prod-up → проверка HTTPS.
 # Повторный запуск безопасен: обновит код и перезапустит, секреты и базу не тронет.
 set -euo pipefail
 
 DOMAIN="${1:-}"
+VLESS="${2:-}"
+if [ -z "$VLESS" ] && [ -f /root/vless.txt ]; then VLESS="$(tr -d '[:space:]' < /root/vless.txt)"; fi
 REPO="${REPO:-https://github.com/Volsogin/gruzspecservice.git}"
 DIR="${DIR:-/opt/gruzspecservice}"
 ENV_SRC="${ENV_SRC:-/root/gruzspec.env}"
@@ -59,7 +63,16 @@ else
   FIRST_RUN=0
 fi
 chmod 600 .env
-DOMAIN="$DOMAIN" FIRST_RUN="$FIRST_RUN" python3 - <<'PY'
+
+if [ -n "$VLESS" ]; then
+  say "VLESS-прокси для Telegram и OpenRouter"
+  python3 deploy/proxy-config.py "$VLESS"
+  PROXY_URL="http://proxy:10809"
+else
+  PROXY_URL=""
+fi
+
+DOMAIN="$DOMAIN" FIRST_RUN="$FIRST_RUN" PROXY_URL="$PROXY_URL" python3 - <<'PY'
 import os, re, secrets
 from pathlib import Path
 
@@ -84,8 +97,9 @@ url = f"https://{domain}"
 for k, v in {
     "APP_ENV": "prod", "DOMAIN": domain, "PUBLIC_BASE_URL": url, "API_BASE_URL": url, "CORS_ORIGINS": url,
     "LOG_JSON": "true",
-    # прокси v2rayN есть только на ноутбуке; сервер за рубежом ходит в Telegram и OpenRouter напрямую
-    "TELEGRAM_PROXY_URL": "", "LLM_PROXY_URL": "",
+    # Прокси v2rayN с ноутбука здесь не работает: либо свой контейнер proxy (VLESS), либо напрямую
+    "TELEGRAM_PROXY_URL": os.environ["PROXY_URL"], "LLM_PROXY_URL": os.environ["PROXY_URL"],
+    "COMPOSE_PROFILES": "proxy" if os.environ["PROXY_URL"] else "",
 }.items():
     put(k, v)
 if not get("SECRET_KEY"):
@@ -111,6 +125,23 @@ fi
 
 say "Сборка и запуск (первый раз 3–5 минут)"
 make prod-up
+
+say "Проверка: Telegram и OpenRouter с сервера"
+sleep 5
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T api python - <<'PY' || true
+import os, urllib.request
+proxy = os.environ.get("LLM_PROXY_URL") or ""
+opener = urllib.request.build_opener(urllib.request.ProxyHandler({"https": proxy} if proxy else {}))
+for name, url in (("Telegram", "https://api.telegram.org"), ("OpenRouter", "https://openrouter.ai/api/v1/models")):
+    try:
+        code = opener.open(url, timeout=15).status
+    except urllib.error.HTTPError as exc:
+        code = exc.code
+    except Exception as exc:
+        code = f"нет связи ({type(exc).__name__})"
+    ok = code in (200, 302) or (name == "Telegram" and code == 404)
+    print(("✅" if ok else "❌"), name, code, "через прокси" if proxy else "напрямую")
+PY
 
 say "Ночной бэкап базы (03:30, хранится 14 дней)"
 cat > /etc/cron.d/gruzspec-backup <<CRON
