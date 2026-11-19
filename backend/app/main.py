@@ -11,7 +11,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.types import Scope
 
@@ -65,6 +65,8 @@ def _mount_frontend(app: FastAPI, dist: Path) -> None:
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa(full_path: str) -> Response:
+        if full_path == "admin":  # SQLAdmin lives under /admin/…; the catch-all would hide the usual redirect
+            return RedirectResponse("/admin/")
         if full_path.split("/", 1)[0] in ("api", "media", "admin", "docs", "redoc"):
             raise NotFound("Не найдено")  # unknown API paths stay JSON 404, not the SPA page
         candidate = (dist / full_path).resolve()

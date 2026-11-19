@@ -36,3 +36,10 @@ async def test_assets_are_cached_and_api_404_is_json(env: Env) -> None:
     assert missing.status_code == 404
     assert missing.json()["error"]["code"] == "not_found"
     assert (await env.client.get("/api/v1/bootstrap")).status_code == 200
+
+
+async def test_admin_and_docs_reachable_without_trailing_slash(env: Env) -> None:
+    # The SPA catch-all must not swallow /admin (SQLAdmin is mounted at /admin/…) or /docs.
+    admin = await env.client.get("/admin", follow_redirects=True)
+    assert admin.status_code == 200 and "id=root" not in admin.text
+    assert (await env.client.get("/docs")).status_code == 200
