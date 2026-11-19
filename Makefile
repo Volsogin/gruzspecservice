@@ -5,7 +5,7 @@ BE := cd backend &&
 COMPOSE := UID=$$(id -u) GID=$$(id -g) docker compose
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev migrate seed test lint format typecheck check openapi geocode-sto import-reviews \
+.PHONY: help install dev migrate seed test lint format typecheck check openapi geocode-sto import-reviews test-email \
         up down logs pre-commit
 
 help: ## Показать команды
@@ -36,6 +36,9 @@ typecheck: ## mypy --strict
 	$(BE) $(UV) run mypy app scripts
 
 check: lint typecheck test ## Всё сразу (как в CI)
+
+test-email: ## Пробное письмо по настройкам SMTP_* из .env: make test-email TO=you@example.com
+	$(BE) $(UV) run python -m scripts.send_test_email $(TO)
 
 openapi: ## Экспорт контракта в docs/openapi.json
 	$(BE) $(UV) run python -m scripts.export_openapi

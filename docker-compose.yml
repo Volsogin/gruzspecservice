@@ -28,7 +28,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://gruzspec:${POSTGRES_PASSWORD:-gruzspec_local_dev}@db:5432/gruzspec
       FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
     ports:
-      - "${API_PORT:-8000}:8000"
+      # On a server set API_BIND=127.0.0.1: only the local reverse proxy (Caddy) can reach the API.
+      - "${API_BIND:-0.0.0.0}:${API_PORT:-8000}:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"   # lets TELEGRAM_PROXY_URL point at a proxy on the host
     volumes:

@@ -11,6 +11,7 @@ REST API сайта грузового автосервиса ООО «ГРУЗ�
 | [API.md](API.md) | обзор эндпоинтов, форматы, журнал изменений контракта |
 | [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) | как фронту подключиться: блоки сайта → эндпоинты, примеры |
 | [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | сценарий демонстрации жюри |
+| [EMAIL_AND_DOMAIN.md](EMAIL_AND_DOMAIN.md) | почта (Resend/Gmail), домен на Cloudflare, VPS + Caddy + HTTPS |
 | [openapi.json](openapi.json) | контракт (генерируется `make openapi`), живой — `/docs` |
 
 Стек: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 (async) + Alembic, PostgreSQL (SQLite для локального

@@ -107,6 +107,7 @@ GitHub Actions.
 | [docs/API.md](docs/API.md) | эндпоинты, формат ошибок, журнал изменений контракта |
 | [docs/FRONTEND_INTEGRATION.md](docs/FRONTEND_INTEGRATION.md) | как фронту подключиться к API |
 | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | сценарий демонстрации |
+| [docs/EMAIL_AND_DOMAIN.md](docs/EMAIL_AND_DOMAIN.md) | почта, домен на Cloudflare, сервер с HTTPS — пошагово |
 | [docs/openapi.json](docs/openapi.json) | OpenAPI-контракт |
 
 Все цифры, цены, отзывы и кейсы в демо-данных — условные и помечены `is_demo`.
