@@ -353,6 +353,7 @@ class ChatService:
         tools = ChatTools(self, ctx, self.geocoder)
         definitions = tool_definitions(works, vtypes)
         full_text = ""
+        tool_results: list[tuple[str, dict[str, Any]]] = []
         for round_no in range(MAX_TOOL_ROUNDS):
             if round_no and not await self.budget.can_spend():
                 break
@@ -393,6 +394,7 @@ class ChatService:
                     for ev in outcome.events:
                         yield ev
                     outcome_result = outcome.result
+                tool_results.append((call.name, outcome_result))
                 yield {"event": "tool", "data": {"name": call.name}}
                 messages.append(
                     {
@@ -404,7 +406,8 @@ class ChatService:
         text = full_text.strip()
         emit = False
         if not text:
-            text = ctx.handoff_text or "Готово. Чем ещё помочь?"
+            # Some models (e.g. Gemini Flash-Lite via OpenRouter) return an empty message after a tool result.
+            text = ctx.handoff_text or answer_from_tools(tool_results, ctx.kb) or "Чем ещё помочь?"
             emit = True
         async for ev in self._finish(ctx, text, mode="llm", emit_text=emit):
             yield ev
@@ -593,3 +596,25 @@ class ChatService:
             chat.status = "closed"
             await db.commit()
             return _session_dict(chat)
+
+
+def answer_from_tools(results: list[tuple[str, dict[str, Any]]], kb: KnowledgeBase) -> str | None:
+    """Deterministic reply built from the last useful tool result when the model said nothing."""
+    for name, result in reversed(results):
+        if result.get("error"):
+            continue
+        if name == "calculate_price" and result.get("price_label"):
+            return f"Ориентировочно {result['price_label']}. {result.get('disclaimer', '')}".strip()
+        if name == "check_dispatch_zone" and result.get("message"):
+            return str(result["message"])
+        if name == "create_lead" and result.get("number"):
+            return (
+                f"Заявка {result['number']} создана — перезвоним в течение "
+                f"~{result.get('callback_eta_minutes', 15)} минут."
+            )
+        if name == "get_contacts":
+            c = kb.contacts()
+            return f"Адрес: {c['address']}. Телефон: {c['phone']}. {c['work_hours']}."
+        if name == "get_services":
+            return "Наши услуги: " + ", ".join(s["title"] for s in kb.services[:9]) + "."
+    return None

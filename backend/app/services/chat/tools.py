@@ -47,7 +47,11 @@ def tool_definitions(work_types: list[str], vehicle_types: list[str]) -> list[di
             {
                 "brand": {"type": "string", "description": "Марка техники, например MAN, КамАЗ, Shacman"},
                 "work_type": {"type": "string", "enum": work_types},
-                "vehicle_type": {"type": "string", "enum": vehicle_types},
+                "vehicle_type": {
+                    "type": "string",
+                    "enum": vehicle_types,
+                    "description": "Только если клиент сам назвал тип техники; не угадывай",
+                },
                 "urgent": {"type": "boolean"},
                 "onsite": {"type": "boolean", "description": "Работы с выездом к месту поломки"},
             },

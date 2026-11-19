@@ -40,7 +40,7 @@ class OpenRouterProvider:
         self.model = model
         self.fallback_models = [m for m in (fallback_models or []) if m and m != model]
         self._url = f"{base_url.rstrip('/')}/chat/completions"
-        self._timeout = httpx.Timeout(timeout, connect=5.0)
+        self._timeout = httpx.Timeout(timeout, connect=10.0)
         self._app_url = app_url
         self._transport = transport
 
@@ -61,6 +61,20 @@ class OpenRouterProvider:
         return payload
 
     async def stream(self, request: ChatRequest) -> AsyncIterator[LLMEvent]:
+        """One retry when the connection itself failed and nothing has been streamed yet (flaky networks/VPN)."""
+        for attempt in (1, 2):
+            started = False
+            try:
+                async for event in self._stream_once(request):
+                    started = True
+                    yield event
+                return
+            except LLMUnavailable as exc:
+                if started or attempt == 2 or not str(exc).startswith("Connect"):
+                    raise
+                logger.warning("llm_connect_retry", extra={"reason": str(exc)})
+
+    async def _stream_once(self, request: ChatRequest) -> AsyncIterator[LLMEvent]:
         headers = {"Authorization": f"Bearer {self._api_key}", "X-Title": "GRUZSPECSERVICE assistant"}
         if self._app_url:
             headers["HTTP-Referer"] = self._app_url

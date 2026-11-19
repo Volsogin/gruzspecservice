@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import httpx
 import pytest
 
 from app.core.config import Settings
@@ -19,6 +20,8 @@ from app.domain.statuses import InvalidTransition, LeadStatus, allowed_transitio
 from app.domain.topics import Topic, asks_for_operator, detect_topic
 from app.domain.validation import LeadValidator
 from app.domain.worktime import work_status
+from app.integrations.llm.base import ChatRequest, TextDelta
+from app.integrations.llm.openrouter import OpenRouterProvider
 from app.integrations.notifiers.telegram import TelegramClient
 
 
@@ -212,3 +215,18 @@ def test_telegram_proxy_setting() -> None:
     s = Settings(_env_file=None, telegram_proxy_url="socks5://127.0.0.1:10808")
     client = TelegramClient("123:X", proxy=s.telegram_proxy_url)  # constructs with SOCKS support installed
     assert client._http is not None
+
+
+async def test_openrouter_retries_once_on_connect_error() -> None:
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise httpx.ConnectTimeout("slow network")
+        body = 'data: {"choices":[{"delta":{"content":"Привет"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'
+        return httpx.Response(200, text=body, headers={"content-type": "text/event-stream"})
+
+    llm = OpenRouterProvider("k", "m", transport=httpx.MockTransport(handler))
+    events = [e async for e in llm.stream(ChatRequest(messages=[{"role": "user", "content": "hi"}]))]
+    assert calls["n"] == 2 and TextDelta("Привет") in events

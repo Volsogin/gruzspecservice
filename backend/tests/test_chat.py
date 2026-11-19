@@ -258,3 +258,21 @@ async def test_llm_create_lead_tool(env: Env) -> None:
     assert any(a["type"] == "lead_created" for a in _actions(events))
     leads = await _leads(env, "callback")
     assert len(leads) == 1 and leads[0].source == "chatbot" and leads[0].consent_given
+
+
+@pytest.mark.parametrize("use_llm", [True])
+async def test_empty_model_reply_after_tool_is_filled_from_tool_result(env: Env) -> None:
+    """Gemini Flash-Lite via OpenRouter returns an empty message after a tool result — never show a stub."""
+    assert env.llm is not None
+    env.llm.script = [
+        [
+            ToolCallsRequested(
+                [ToolCall("c1", "calculate_price", json.dumps({"brand": "MAN", "work_type": "brakes"}))]
+            ),
+            Finished("tool_calls"),
+        ],
+        [Finished("stop")],  # empty answer
+    ]
+    sid = await _session(env)
+    done = _done(await _say(env, sid, "Сколько стоят тормоза на MAN?"))
+    assert done["text"].startswith("Ориентировочно от 4 800 ₽") and "условные" in done["text"]

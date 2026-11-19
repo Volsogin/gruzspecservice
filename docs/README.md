@@ -14,7 +14,7 @@ REST API сайта грузового автосервиса ООО «ГРУЗ�
 | [openapi.json](openapi.json) | контракт (генерируется `make openapi`), живой — `/docs` |
 
 Стек: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 (async) + Alembic, PostgreSQL (SQLite для локального
-запуска), SQLAdmin, httpx, Pillow. Качество: ruff, mypy `--strict`, pytest (113 тестов), pre-commit, GitHub Actions.
+запуска), SQLAdmin, httpx, Pillow. Качество: ruff, mypy `--strict`, pytest (115 тестов), pre-commit, GitHub Actions.
 
 ## Быстрый старт (Linux Mint / Ubuntu)
 

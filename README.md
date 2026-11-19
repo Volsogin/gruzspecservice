@@ -95,7 +95,7 @@ make dev
 ## Стек
 
 Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 (async) + Alembic · PostgreSQL / SQLite · SQLAdmin · httpx ·
-Pillow · OpenRouter · Telegram Bot API · 2ГИС. Качество: ruff, mypy `--strict`, pytest (113 тестов), pre-commit,
+Pillow · OpenRouter · Telegram Bot API · 2ГИС. Качество: ruff, mypy `--strict`, pytest (115 тестов), pre-commit,
 GitHub Actions.
 
 ## Документация

@@ -101,8 +101,10 @@ class Settings(BaseSettings):
     # --- LLM (OpenRouter) ------------------------------------------------------------
     openrouter_api_key: SecretStr | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    llm_model: str = "google/gemini-2.5-flash-lite"
-    llm_fallback_models: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["openai/gpt-4.1-nano"])
+    llm_model: str = "deepseek/deepseek-v4-flash"
+    llm_fallback_models: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["google/gemini-2.5-flash-lite"]
+    )
     llm_max_tokens: int = 400
     llm_temperature: float = 0.3
     llm_timeout_seconds: float = 25.0
