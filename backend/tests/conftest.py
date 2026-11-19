@@ -244,7 +244,7 @@ def lead_payload(lead_type: str = "repair", **extra: Any) -> dict[str, Any]:
         },
         "corporate": {
             "company_name": "ООО Ромашка",
-            "fleet_size": 12,
+            "fleet_size": "6-20",
             "email": "fleet@example.com",
             "inn": "7707083893",
             "fleet_types": ["tractor", "dump"],

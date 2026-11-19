@@ -20,7 +20,7 @@ from app.api.v1 import admin as admin_api
 from app.api.v1 import chat, content, leads, system, tools
 from app.container import Container, build_container
 from app.core.config import Settings, get_settings
-from app.core.errors import install_error_handlers
+from app.core.errors import NotFound, install_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import BodySizeLimitMiddleware, RequestContextMiddleware, SecurityHeadersMiddleware
 
@@ -65,6 +65,8 @@ def _mount_frontend(app: FastAPI, dist: Path) -> None:
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa(full_path: str) -> Response:
+        if full_path.split("/", 1)[0] in ("api", "media", "admin", "docs", "redoc"):
+            raise NotFound("Не найдено")  # unknown API paths stay JSON 404, not the SPA page
         candidate = (dist / full_path).resolve()
         if full_path and candidate.is_file() and candidate.is_relative_to(dist.resolve()):  # noqa: ASYNC240
             return FileResponse(candidate)

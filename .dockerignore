@@ -1,0 +1,16 @@
+# Build context is the repo root: keep it small and never ship secrets.
+.git
+.github
+.claude
+.env
+*.odt
+docs
+**/__pycache__
+backend/.venv
+backend/var
+backend/.mypy_cache
+backend/.ruff_cache
+backend/.pytest_cache
+backend/tests
+frontend/node_modules
+frontend/dist

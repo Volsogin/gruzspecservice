@@ -38,7 +38,7 @@ PUBLIC_CACHE = "public, max-age=60, stale-while-revalidate=300"
 )
 async def public_settings(db: DbDep, response: Response, container: ContainerDep) -> dict[str, Any]:
     response.headers["Cache-Control"] = PUBLIC_CACHE
-    return (await load_settings(db)).public(container.settings.bot_username)
+    return (await load_settings(db)).public(container.settings.bot_username, container.settings.public_maps())
 
 
 @router.get(
@@ -116,6 +116,7 @@ async def privacy(db: DbDep) -> dict[str, Any]:
         "version": str(legal.get("consent_version", "v1")),
         "title": legal.get("privacy_title", ""),
         "text": legal.get("privacy_text", ""),
+        "sections": legal.get("privacy_sections") or [],
         "consent_text": legal.get("consent_text", ""),
         "updated_at": legal.get("updated_at"),
         "is_placeholder": bool(legal.get("is_placeholder", True)),

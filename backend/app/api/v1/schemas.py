@@ -289,10 +289,16 @@ class CaseOut(BaseModel):
 
 
 # --- legal ---------------------------------------------------------------------------------------------
+class PrivacySection(BaseModel):
+    title: str
+    text: str
+
+
 class PrivacyOut(BaseModel):
     version: str
     title: str
     text: str
+    sections: list[PrivacySection] = Field(default_factory=list, description="Разделы политики (если заданы)")
     consent_text: str
     updated_at: str | None
     is_placeholder: bool

@@ -24,3 +24,8 @@ coverage/
 
 # справочные материалы команды — только локально
 docs/reference/
+
+# local tooling
+.claude/
+*.tsbuildinfo
+backups/

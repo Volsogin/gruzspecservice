@@ -90,7 +90,7 @@ class SiteSettings:
             }
         return messengers
 
-    def public(self, bot_username: str | None = None) -> dict[str, Any]:
+    def public(self, bot_username: str | None = None, maps: dict[str, str | None] | None = None) -> dict[str, Any]:
         """Everything the website shows: contacts, address/coordinates, hours, stats, links."""
         lat, lon = self.sto_point
         address = {**self.section("address"), "lat": lat, "lon": lon}
@@ -113,6 +113,7 @@ class SiteSettings:
             "consent": {"version": self.consent_version, "text": self.section("legal").get("consent_text")},
             "work_status": self.work_status(),
             # Link for «Написать в Telegram» on the site (from BOT_USERNAME); None when the bot isn't configured.
+            "maps": maps or {"provider": "2gis", "mapgl_key": None, "style": None},
             "telegram_bot": (
                 {"username": bot_username.lstrip("@"), "url": f"https://t.me/{bot_username.lstrip('@')}"}
                 if bot_username

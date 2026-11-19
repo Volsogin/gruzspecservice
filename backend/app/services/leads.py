@@ -31,7 +31,7 @@ from app.db.models import (
     Service,
 )
 from app.domain.dispatch import check_point
-from app.domain.forms import form_for_lead_type
+from app.domain.forms import VEHICLE_TYPE_LABELS, form_for_lead_type
 from app.domain.phone import mask_phone
 from app.domain.statuses import DISPATCH_TYPES, LEAD_TYPE_LABELS, LeadStatus, LeadType, status_label
 from app.domain.validation import LeadValidator, ValidatedLead
@@ -80,6 +80,7 @@ def lead_summary(lead: Lead) -> dict[str, Any]:
         "phone_masked": mask_phone(lead.phone),
         "vehicle_brand": lead.vehicle_brand,
         "vehicle_type": lead.vehicle_type,
+        "vehicle_type_label": VEHICLE_TYPE_LABELS.get(lead.vehicle_type or "", lead.vehicle_type),
         "address": lead.address,
         "photos_count": len(lead.attachments),
         "created_at": lead.created_at.isoformat(),

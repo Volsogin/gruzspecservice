@@ -1,0 +1,15 @@
+# Один домен: сайт, API (/api), админка (/admin) и фото (/media) — всё отдаёт контейнер api.
+# Caddy сам получает и продлевает HTTPS-сертификат (нужны DNS A-запись на сервер и открытые 80/443).
+{$DOMAIN} {
+	# без `encode`: API сам сжимает ответы, а сжатие на прокси задерживает поток чата (SSE)
+	reverse_proxy api:8000 {
+		flush_interval -1
+	}
+	# HSTS, nosniff и прочие заголовки безопасности ставит само приложение (APP_ENV=prod)
+	header -Server
+}
+
+# www → основной домен (раскомментируйте, если в DNS есть запись www)
+# www.{$DOMAIN} {
+# 	redir https://{$DOMAIN}{uri} permanent
+# }

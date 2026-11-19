@@ -597,7 +597,7 @@
                     "description": "ИНН"
                   },
                   "fleet_size": {
-                    "type": "integer",
+                    "type": "string",
                     "description": "Сколько единиц техники в парке"
                   },
                   "fleet_types": {
@@ -744,7 +744,7 @@
                     "description": "ИНН"
                   },
                   "fleet_size": {
-                    "type": "integer",
+                    "type": "string",
                     "description": "Сколько единиц техники в парке"
                   },
                   "fleet_types": {
@@ -3495,6 +3495,14 @@
             "type": "string",
             "title": "Text"
           },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacySection"
+            },
+            "type": "array",
+            "title": "Sections",
+            "description": "Разделы политики (если заданы)"
+          },
           "consent_text": {
             "type": "string",
             "title": "Consent Text"
@@ -3525,6 +3533,24 @@
           "is_placeholder"
         ],
         "title": "PrivacyOut"
+      },
+      "PrivacySection": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "text"
+        ],
+        "title": "PrivacySection"
       },
       "ReadyOut": {
         "properties": {

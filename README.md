@@ -4,11 +4,13 @@
 спецтехники на СТО и с выездом к месту поломки, круглосуточно.
 
 [![backend](https://github.com/Volsogin/gruzspecservice/actions/workflows/backend.yml/badge.svg)](https://github.com/Volsogin/gruzspecservice/actions/workflows/backend.yml)
+[![frontend](https://github.com/Volsogin/gruzspecservice/actions/workflows/frontend.yml/badge.svg)](https://github.com/Volsogin/gruzspecservice/actions/workflows/frontend.yml)
 
-| Каталог | Состояние |
+| Каталог | Что там |
 |---|---|
-| [`backend/`](backend) | ✅ готов: REST API, админка, Telegram-бот, ИИ-ассистент |
-| [`frontend/`](frontend) | ⏳ будет добавлен — контракт для него уже готов |
+| [`frontend/`](frontend) | сайт: React + TypeScript + Vite, карта 2ГИС, чат-виджет, страница заказа; десктоп и мобильная версия |
+| [`backend/`](backend) | REST API, админка, Telegram-бот, ИИ-ассистент; он же раздаёт собранный сайт |
+| [`deploy/`](deploy) | Caddyfile для сервера (HTTPS) |
 | [`docs/`](docs) | документация всего проекта |
 
 ## Задумка
@@ -33,6 +35,17 @@
 - **Доверие:** статистика, отзывы с переходом на Яндекс и 2ГИС, кейсы «до/после» в раскрытии отзыва.
 
 ## Функционал
+
+### Сайт
+- Главная по макету: первый экран с «Вызвать мастера», лента услуг (клик → форма нужного типа уже
+  заполнена), форма заявки, карта зоны выезда, калькулятор, цифры, преимущества, бегущая строка марок,
+  отзывы с кейсами «до/после» (слайдер сравнения), блок для юрлиц, контакты с картой.
+- Экран подтверждения: номер заявки, сводка, «Открыть статус заявки», «Получать статус в Telegram».
+- Страница заказа `/order/{token}`: шаги, история, сводка, фото, расчёт; обновляется сама.
+- Чат-виджет: ответ ИИ печатается потоком, подсказки, карточки расчёта/формы/карты/заявки,
+  «Позвать оператора» — и ответы живого оператора прямо в окне чата.
+- Мобильная версия: нижняя панель «Позвонить / Вызвать мастера / Чат», выбор точки на полноэкранной карте,
+  геолокация, фото с камеры, свайп-ленты, чат во весь экран.
 
 ### Заявки
 - 6 типов форм: ремонт на СТО, выезд мастера, эвакуатор, запчасти, корпоративное обслуживание, обратный звонок.
@@ -87,27 +100,41 @@ cp .env.example .env
 make dev
 ```
 
-Запуск без Docker (нужен только [uv](https://docs.astral.sh/uv/)): SQLite, демо-данные, API на
-<http://localhost:8000>, Swagger на `/docs`, админка на `/admin`. С PostgreSQL в Docker — `make up`.
-Все команды — `make help`. Подробно (установка на Linux Mint, ключи, Telegram, 2ГИС) — в
-[docs/README.md](docs/README.md).
+```bash
+make web
+```
+
+`make dev` — API на <http://localhost:8000> (SQLite, демо-данные, Swagger `/docs`, админка `/admin`), нужен
+только [uv](https://docs.astral.sh/uv/). `make web` (во втором терминале, Node.js 18.18+) — сайт на
+<http://localhost:5173>. Всё одним процессом, как на сервере: `make preview`. С PostgreSQL в Docker — `make up`.
+Все команды — `make help`.
+
+## Деплой
+
+- **Тест на ноутбуке (Linux Mint):** `make preview` — сайт и API на :8000, открывается с телефона в той же Wi-Fi.
+- **Сервер Ubuntu 24.04:** `make prod-up` — PostgreSQL + сайт/API + Caddy с автоматическим HTTPS на вашем домене.
+
+Пошагово (VPS, Docker, DNS, `.env`, обновления, бэкапы) — [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Стек
 
-Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 (async) + Alembic · PostgreSQL / SQLite · SQLAdmin · httpx ·
-Pillow · OpenRouter · Telegram Bot API · 2ГИС. Качество: ruff, mypy `--strict`, pytest (115 тестов), pre-commit,
-GitHub Actions.
+**Сайт:** React 18 · TypeScript · Vite · React Router · 2ГИС MapGL.
+**API:** Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 (async) + Alembic · PostgreSQL / SQLite · SQLAdmin ·
+httpx · Pillow · OpenRouter · Telegram Bot API · 2ГИС. **Деплой:** Docker (многоэтапная сборка) · Caddy.
+Качество: ruff, mypy `--strict`, pytest (118 тестов), `tsc --strict`, pre-commit, GitHub Actions.
 
 ## Документация
 
 | Документ | О чём |
 |---|---|
 | [docs/README.md](docs/README.md) | установка и запуск, ключи и интеграции, тесты |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | тест на ноутбуке, сервер Ubuntu 24.04 + домен + HTTPS, обновления, бэкапы |
+| [frontend/README.md](frontend/README.md) | устройство сайта, страницы, что изменено относительно макета |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | слои, потоки данных, безопасность, ПДн, допущения, заглушки |
 | [docs/API.md](docs/API.md) | эндпоинты, формат ошибок, журнал изменений контракта |
-| [docs/FRONTEND_INTEGRATION.md](docs/FRONTEND_INTEGRATION.md) | как фронту подключиться к API |
+| [docs/FRONTEND_INTEGRATION.md](docs/FRONTEND_INTEGRATION.md) | блоки сайта → эндпоинты API |
 | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | сценарий демонстрации |
-| [docs/EMAIL_AND_DOMAIN.md](docs/EMAIL_AND_DOMAIN.md) | почта, домен на Cloudflare, сервер с HTTPS — пошагово |
+| [docs/EMAIL_AND_DOMAIN.md](docs/EMAIL_AND_DOMAIN.md) | почта (Resend/Gmail) и домен на Cloudflare — пошагово |
 | [docs/openapi.json](docs/openapi.json) | OpenAPI-контракт |
 
 Все цифры, цены, отзывы и кейсы в демо-данных — условные и помечены `is_demo`.

@@ -110,6 +110,20 @@ async def test_calculator(env: Env) -> None:
     assert lead.status_code == 201
     detail = (await env.client.get(f"/api/v1/admin/leads/{lead.json()['id']}", headers=env.admin)).json()
     assert detail["source"] == "calculator" and detail["estimate"]["price_from"] == 2700
+    order = (await env.client.get(f"/api/v1/orders/{lead.json()['public_token']}")).json()
+    assert order["summary"]["estimate"]["price_label"] == "от 2 700 ₽"
+    assert order["summary"]["estimate"]["input"]["urgent"] is True and order["summary"]["estimate"]["breakdown"]
+
+
+@pytest.mark.parametrize("settings_overrides", [{"dgis_mapgl_key": "public-browser-key"}])
+async def test_public_settings_for_the_site(env: Env) -> None:
+    pub = (await env.client.get("/api/v1/settings/public")).json()
+    assert pub["maps"] == {"provider": "2gis", "mapgl_key": "public-browser-key", "style": None}
+    assert len(pub["advantages"]) == 9 and pub["company"]["requisites"]["vat"]
+    boot = (await env.client.get("/api/v1/bootstrap")).json()
+    assert boot["settings"]["maps"]["mapgl_key"] == "public-browser-key"
+    privacy = (await env.client.get("/api/v1/legal/privacy")).json()
+    assert len(privacy["sections"]) == 6 and privacy["sections"][0]["title"].startswith("1.")
 
 
 async def test_dispatch_zone_and_check(env: Env) -> None:

@@ -1,4 +1,5 @@
-# docker compose up --build → PostgreSQL + API on http://localhost:8000 (docs: /docs, admin: /admin)
+# docker compose up --build → PostgreSQL + сайт и API на http://localhost:8000 (сайт: /, Swagger: /docs, админка: /admin)
+# Продакшен (Ubuntu 24 + HTTPS): см. docs/DEPLOY.md
 services:
   db:
     image: postgres:16-alpine
@@ -17,7 +18,8 @@ services:
 
   api:
     build:
-      context: ./backend
+      context: .                      # repo root: the image builds frontend/ and backend/ together
+      dockerfile: backend/Dockerfile
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
@@ -38,16 +40,6 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
-
-  # Frontend — will be added together with frontend/ (see frontend/README.md):
-  # web:
-  #   build: ./frontend
-  #   environment:
-  #     VITE_API_URL: http://localhost:${API_PORT:-8000}/api/v1
-  #   ports:
-  #     - "${WEB_PORT:-5173}:80"
-  #   depends_on:
-  #     - api
 
 volumes:
   pgdata:

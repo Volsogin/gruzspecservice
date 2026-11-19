@@ -1,0 +1,34 @@
+# Продакшен-надстройка: `make prod-up` (= docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build).
+# Снаружи открыт только Caddy (80/443, автоматический HTTPS); API и БД доступны лишь внутри Docker-сети.
+services:
+  api:
+    ports: !reset []          # API не публикуется наружу — только через Caddy
+    environment:
+      FORWARDED_ALLOW_IPS: "*"   # доверять X-Forwarded-For от Caddy (порт API закрыт снаружи)
+    logging: &logs
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  db:
+    logging: *logs
+
+  caddy:
+    image: caddy:2.8-alpine
+    environment:
+      DOMAIN: ${DOMAIN:?Укажите DOMAIN в .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # сертификаты Let's Encrypt — не удалять
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+    logging: *logs
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -179,10 +179,10 @@ class TestLeadValidator:
                 "consent": True,
                 "company_name": "ООО",
                 "email": "A@Example.COM",
-                "fleet_size": "3",
+                "fleet_size": "1-5",
             }
         )
-        assert ok.details["fleet_size"] == 3 and ok.columns["email"] == "a@example.com"
+        assert ok.details["fleet_size"] == "1-5" and ok.columns["email"] == "a@example.com"
 
     def test_conditional_field_and_geo(self) -> None:
         base = {

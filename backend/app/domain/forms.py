@@ -120,6 +120,15 @@ VEHICLE_TYPES: tuple[Option, ...] = (
     Option("special", "Спецтехника"),
 )
 
+VEHICLE_TYPE_LABELS: dict[str, str] = {o.value: o.label for o in VEHICLE_TYPES}
+
+FLEET_SIZES: tuple[Option, ...] = (
+    Option("1-5", "1–5"),
+    Option("6-20", "6–20"),
+    Option("21-50", "21–50"),
+    Option("50+", "Больше 50"),
+)
+
 YES_NO_UNKNOWN = (Option("yes", "Да"), Option("no", "Нет"), Option("unknown", "Не знаю"))
 
 # --- shared field definitions ------------------------------------------------------------
@@ -346,12 +355,7 @@ FORMS: dict[LeadType, FormSchema] = {
             FieldSpec("company_name", FieldType.TEXT, "Название компании", required=True, max_length=200),
             FieldSpec("inn", FieldType.INN, "ИНН", help="Необязательно. 10 цифр для организации, 12 — для ИП"),
             FieldSpec(
-                "fleet_size",
-                FieldType.INTEGER,
-                "Сколько единиц техники в парке",
-                required=True,
-                min_value=1,
-                max_value=10000,
+                "fleet_size", FieldType.SELECT, "Сколько единиц техники в парке", required=True, options=FLEET_SIZES
             ),
             FieldSpec("fleet_types", FieldType.MULTISELECT, "Типы техники", options=VEHICLE_TYPES),
             FieldSpec("name", FieldType.TEXT, "Контактное лицо", required=True, target="column", max_length=120),

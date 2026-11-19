@@ -118,6 +118,12 @@ class Settings(BaseSettings):
     # --- 2GIS ------------------------------------------------------------------------
     dgis_api_key: SecretStr | None = None
     dgis_catalog_base: str = "https://catalog.api.2gis.com/3.0"
+    # Browser key for the MapGL map. It is public by nature (the page sends it to 2GIS), so it is
+    # served via /settings/public; restrict it to your domain in the 2GIS dashboard.
+    dgis_mapgl_key: str | None = None
+    dgis_map_style: str | None = (
+        None  # style ID from the 2GIS Style Editor (copy of the night theme); empty → CSS-darkened default
+    )
 
     # --- caching -----------------------------------------------------------------------
     bootstrap_cache_seconds: int = 30
@@ -191,6 +197,9 @@ class Settings(BaseSettings):
     @property
     def is_sqlite(self) -> bool:
         return self.database_url.startswith("sqlite")
+
+    def public_maps(self) -> dict[str, str | None]:
+        return {"provider": "2gis", "mapgl_key": self.dgis_mapgl_key or None, "style": self.dgis_map_style or None}
 
     def tracking_url(self, public_token: str) -> str:
         """Public link to the order page rendered by the frontend."""

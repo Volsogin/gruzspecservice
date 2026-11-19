@@ -14,10 +14,11 @@ from app.db.models import Lead
 from app.domain.forms import form_for_lead_type
 from app.domain.statuses import DISPATCH_TYPES, LeadStatus, LeadType, status_label
 from app.integrations.storage.base import Storage
+from app.services.calculator import estimate_to_dict
 from app.services.leads import lead_summary
 from app.services.notifications import _detail_lines
 
-_NOT_FOUND = "Заявка не найдена. Проверьте ссылку из письма или SMS."
+_NOT_FOUND = "Заявка не найдена. Проверьте ссылку из письма или Telegram."
 
 
 def _expected_steps(lead_type: str) -> list[LeadStatus]:
@@ -25,6 +26,14 @@ def _expected_steps(lead_type: str) -> list[LeadStatus]:
     if LeadType(lead_type) in DISPATCH_TYPES:
         steps.append(LeadStatus.ON_THE_WAY)
     return [*steps, LeadStatus.IN_PROGRESS, LeadStatus.COMPLETED]
+
+
+def _estimate(lead: Lead) -> dict[str, Any] | None:
+    row = lead.estimate
+    if row is None:
+        return None
+    data = estimate_to_dict(row, "")
+    return {k: data[k] for k in ("price_from", "price_label", "currency", "breakdown", "input")}
 
 
 async def get_order(session: AsyncSession, token: str, settings: Settings, storage: Storage) -> dict[str, Any]:
@@ -68,7 +77,7 @@ async def get_order(session: AsyncSession, token: str, settings: Settings, stora
                 }
                 for a in lead.attachments
             ],
-            "estimate": {"price_from": lead.estimate.price_from, "currency": "RUB"} if lead.estimate else None,
+            "estimate": _estimate(lead),
         }
     )
     form = form_for_lead_type(LeadType(lead.type))

@@ -30,9 +30,11 @@ class CachedBody:
     built_at: float
 
 
-async def build_bootstrap(session: AsyncSession, bot_username: str | None = None) -> dict[str, Any]:
+async def build_bootstrap(
+    session: AsyncSession, bot_username: str | None = None, maps: dict[str, str | None] | None = None
+) -> dict[str, Any]:
     site = await load_settings(session)
-    public = site.public(bot_username)
+    public = site.public(bot_username, maps)
     brands = (await session.scalars(select(PriceBrand).order_by(PriceBrand.sort_order))).all()
     lat, lon = site.sto_point
     dispatch = site.dispatch_config()
@@ -59,9 +61,14 @@ class BootstrapCache:
     """Builds the payload at most once per `ttl` seconds; ETag = content hash."""
 
     def __init__(
-        self, session_factory: async_sessionmaker[AsyncSession], ttl: float, bot_username: str | None = None
+        self,
+        session_factory: async_sessionmaker[AsyncSession],
+        ttl: float,
+        bot_username: str | None = None,
+        maps: dict[str, str | None] | None = None,
     ) -> None:
         self.bot_username = bot_username
+        self.maps = maps
         self.session_factory = session_factory
         self.ttl = ttl
         self._entry: CachedBody | None = None
@@ -79,10 +86,11 @@ class BootstrapCache:
             if entry and time.monotonic() - entry.built_at < self.ttl:
                 return entry
             async with self.session_factory() as session:
-                payload = await build_bootstrap(session, self.bot_username)
+                payload = await build_bootstrap(session, self.bot_username, self.maps)
             raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str).encode()
             # work_status.local_time changes every minute; exclude it from the ETag so caches stay warm.
-            stable = dict(payload, work_status={k: v for k, v in payload["work_status"].items() if k != "local_time"})
+            status = {k: v for k, v in payload["work_status"].items() if k != "local_time"}
+            stable = dict(payload, work_status=status, settings=dict(payload["settings"], work_status=status))
             etag_src = json.dumps(stable, ensure_ascii=False, sort_keys=True, default=str).encode()
             etag = '"' + hashlib.sha256(etag_src).hexdigest()[:24] + '"'
             entry = CachedBody(raw, gzip.compress(raw, 6), brotli.compress(raw, quality=5), etag, time.monotonic())

@@ -1,12 +1,12 @@
 name: backend
 
-# Runs only when the backend (or this workflow) changes. The frontend gets its own workflow file.
+# Runs when the backend, the Docker setup or the frontend (it is built into the same image) changes.
 on:
   push:
     branches: [main]
-    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
+    paths: ["backend/**", "frontend/**", "docker-compose*.yml", ".dockerignore", ".github/workflows/backend.yml"]
   pull_request:
-    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
+    paths: ["backend/**", "frontend/**", "docker-compose*.yml", ".dockerignore", ".github/workflows/backend.yml"]
   workflow_dispatch:
 
 jobs:
@@ -46,6 +46,12 @@ jobs:
           TOKEN=$(echo "$LEAD" | python3 -c "import json,sys; print(json.load(sys.stdin)['public_token'])")
           curl -sf $B/orders/$TOKEN | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['status'] == 'new', d"
           curl -sf -X POST $B/calculator/estimate -H 'Content-Type: application/json' -d '{"brand":"MAN","work_type":"diagnostics"}' | grep -q price_from
+          # the site is served by the same container (SPA fallback for client routes)
+          curl -sf http://localhost:8000/ | grep -q 'id="root"'
+          curl -sf http://localhost:8000/order/$TOKEN | grep -q 'id="root"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/v1/nope)" = 404
+      - name: Production override is valid
+        run: DOMAIN=example.com docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
       - name: Restart keeps data (migrations + seed are idempotent)
         run: |
           docker compose restart api

@@ -1,0 +1,67 @@
+/* ГРУЗСПЕЦСЕРВИС — дизайн-токены (только тёмная тема) и глобальные стили. */
+:root {
+  --gs-bg: rgb(18, 18, 18);
+  --gs-surface: rgb(30, 30, 30);
+  --gs-surface-2: rgb(42, 42, 42);
+  --gs-surface-3: rgb(58, 58, 58);
+  --gs-text: rgb(255, 255, 255);
+  --gs-text-2: rgb(184, 184, 184);
+  --gs-text-3: rgb(128, 128, 128);
+  --gs-accent: rgb(204, 21, 23);
+  --gs-accent-hover: rgb(226, 38, 40);
+  --gs-star: rgb(255, 136, 0);
+  --gs-success: oklch(0.72 0.17 150);
+  --gs-warning: oklch(0.82 0.16 85);
+  --gs-danger-text: rgb(255, 107, 107);
+  --gs-info: oklch(0.72 0.12 240);
+  --gs-font-display: 'Josefin Sans', 'Jost', sans-serif;
+  --gs-font-body: 'K2D', 'Jost', sans-serif;
+  color-scheme: dark;
+}
+
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--gs-bg); color: #fff; font-family: var(--gs-font-body); -webkit-font-smoothing: antialiased; }
+* { -webkit-tap-highlight-color: transparent; }
+a { color: #fff; text-decoration: none; }
+a:hover { color: var(--gs-accent-hover); }
+button, input, textarea { font: inherit; }
+button:disabled { cursor: default !important; }
+input::placeholder, textarea::placeholder { color: rgb(150, 150, 150); }
+:focus-visible { outline: 2px solid var(--gs-accent-hover); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible { outline: none; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgb(58, 58, 58); border-radius: 10px; }
+[style*='scrollbar-width:none']::-webkit-scrollbar, [style*='scrollbar-width: none']::-webkit-scrollbar { display: none; }
+
+/* hover / focus states from the design (inline styles can't express them) */
+.hv-accent:hover { background: var(--gs-accent-hover) !important; color: #fff !important; }
+.hv-bd-accent:hover { border-color: var(--gs-accent) !important; color: #fff !important; }
+.hv-ring:hover { box-shadow: inset 0 0 0 1px var(--gs-accent) !important; }
+.hv-s3:hover { background: var(--gs-surface-3) !important; color: #fff !important; }
+.hv-white10:hover { background: rgba(255, 255, 255, 0.1) !important; }
+.hv-red:hover { color: var(--gs-accent-hover) !important; }
+.hv-bd-white:hover { border-color: #fff !important; }
+.hv-soft:hover { background: rgba(204, 21, 23, 0.16) !important; }
+.fc-accent:focus { border-color: var(--gs-accent) !important; }
+.fc-white:focus { border-bottom-color: #fff !important; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+.skip-link { position: absolute; left: 8px; top: -60px; z-index: 100; padding: 10px 16px; border-radius: 13px; background: var(--gs-accent); color: #fff; }
+.skip-link:focus { top: 8px; color: #fff; }
+
+/* Material Symbols: hide ligature text until the icon font is ready */
+.msym { font-display: block; }
+
+@keyframes gsmarquee { to { transform: translateX(-50%); } }
+@keyframes gsspin { to { transform: rotate(360deg); } }
+@keyframes gsdot { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+@keyframes gscaret { 50% { opacity: 0; } }
+@keyframes gspulse { 50% { opacity: 0.45; } }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .marquee { animation-duration: 120s !important; }
+}
+
+/* 2GIS map without a custom night style: darken only the map canvas (HTML markers stay as is) */
+.map-dim canvas { filter: invert(0.92) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(0.6); }
