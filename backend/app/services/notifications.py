@@ -76,6 +76,10 @@ async def enqueue_lead_created(session: AsyncSession, lead: Lead, routing: Routi
         _add(session, OPERATOR_LEAD_CREATED, "log", lead.id, to="log")
     if lead.email:
         _add(session, CLIENT_LEAD_CREATED, "email", lead.id, to=lead.email)
+    if routing.telegram_enabled and "channels" in lead.__dict__:  # loaded: never lazy-load in async code
+        for ch in lead.channels:
+            if ch.kind == "telegram":
+                _add(session, CLIENT_LEAD_CREATED, "telegram", lead.id, to=ch.address)
 
 
 def enqueue_status_changed(
@@ -188,7 +192,9 @@ def render_operator_lead(lead: Lead, settings: Settings, *, html_mode: bool) -> 
     if lead.email:
         out.append(f"E-mail: {e(lead.email)}")
     if lead.telegram_username:
-        out.append(f"Telegram клиента: @{e(lead.telegram_username)} (бот первым не пишет — только вручную)")
+        out.append(
+            f"Telegram клиента: @{e(lead.telegram_username)} (бот пишет сам, только если клиент нажимал «Start»)"
+        )
     vehicle = ", ".join(x for x in (lead.vehicle_brand, lead.vehicle_type) if x)
     if vehicle:
         out.append(f"Техника: {e(vehicle)}")
@@ -245,6 +251,15 @@ def render_client_created(lead: Lead, settings: Settings, company: str) -> tuple
     text = "\n".join(lines)
     html_body = _simple_html(subject, lines, tracking, tg)
     return subject, text, html_body
+
+
+def render_client_created_telegram(lead: Lead, settings: Settings) -> str:
+    form = form_for_lead_type(LeadType(lead.type))
+    return (
+        f"<b>Заявка {_e(lead.number)} принята</b> ({_e(LEAD_TYPE_LABELS[LeadType(lead.type)].lower())}).\n"
+        f"{_e(form.success_message)}\n\n"
+        "Сюда будут приходить статусы заявки."
+    )
 
 
 def render_client_status(

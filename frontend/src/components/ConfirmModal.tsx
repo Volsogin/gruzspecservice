@@ -69,7 +69,11 @@ export function ConfirmModal({ data, onClose }: { data: Submitted; onClose: () =
           <Link to={`/order/${lead.public_token}`} onClick={onClose} className="hv-accent" style={s("flex:1 1 220px;height:52px;border-radius:13px;background:rgb(204,21,23);display:flex;align-items:center;justify-content:center;font-family:'Josefin Sans',Jost,sans-serif;font-weight:300;font-size:19px;color:#fff")}>
             Открыть статус заявки
           </Link>
-          {lead.telegram_bind_url && (
+          {lead.telegram_bound ? (
+            <span style={s("flex:1 1 220px;height:52px;border-radius:13px;border:1px solid rgba(255,255,255,0.2);box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'Josefin Sans',Jost,sans-serif;font-weight:300;font-size:19px")}>
+              <span style={s('color:oklch(0.85 0.12 150)')}>✓</span>Написали вам в Telegram
+            </span>
+          ) : lead.telegram_bind_url && (
             <a href={lead.telegram_bind_url} target="_blank" rel="noopener" style={s("flex:1 1 220px;height:52px;border-radius:13px;border:1px solid #fff;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-family:'Josefin Sans',Jost,sans-serif;font-weight:300;font-size:19px")}>
               Получать статус в Telegram
             </a>

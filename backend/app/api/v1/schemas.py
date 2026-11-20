@@ -109,6 +109,9 @@ class LeadCreatedOut(BaseModel):
     callback_eta_minutes: int
     message: str
     telegram_bind_url: str | None = Field(examples=["https://t.me/gruzspec_bot?start=3q2-xYz..."])
+    telegram_bound: bool = Field(
+        default=False, description="Клиент уже писал боту (тот же @ник или телефон) — подтверждение ушло в Telegram"
+    )
     max_bind_url: str | None
 
 

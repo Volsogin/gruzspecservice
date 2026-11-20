@@ -10,7 +10,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import ColumnElement, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
@@ -29,6 +29,7 @@ from app.db.models import (
     LeadAttachment,
     LeadStatusHistory,
     Service,
+    TgClient,
 )
 from app.domain.dispatch import check_point
 from app.domain.forms import VEHICLE_TYPE_LABELS, form_for_lead_type
@@ -87,7 +88,7 @@ def lead_summary(lead: Lead) -> dict[str, Any]:
     }
 
 
-def created_response(lead: Lead, settings: Settings) -> dict[str, Any]:
+def created_response(lead: Lead, settings: Settings, *, telegram_bound: bool = False) -> dict[str, Any]:
     form = form_for_lead_type(LeadType(lead.type))
     return {
         "id": str(lead.id),
@@ -100,6 +101,7 @@ def created_response(lead: Lead, settings: Settings) -> dict[str, Any]:
         "callback_eta_minutes": form.callback_eta_minutes,
         "message": form.success_message,
         "telegram_bind_url": settings.telegram_bind_url(lead.public_token),
+        "telegram_bound": telegram_bound,
         "max_bind_url": settings.max_bind_url(lead.public_token),
     }
 
@@ -173,7 +175,8 @@ class LeadService:
                 raise
         self.on_commit()
         logger.info("lead_created", extra={"lead_number": lead.number, "lead_type": lead.type, "photos": len(stored)})
-        return LeadCreated(created_response(lead, self.settings))
+        bound = any(ch.kind == "telegram" for ch in lead.channels)
+        return LeadCreated(created_response(lead, self.settings, telegram_bound=bound))
 
     # --- pipeline steps -----------------------------------------------------------------------------
     def _check_form_token(self, validated: ValidatedLead) -> None:
@@ -275,8 +278,13 @@ class LeadService:
         lead.history = [
             LeadStatusHistory(from_status=None, to_status=LeadStatus.NEW.value, actor="client", created_at=now)
         ]
-        if lead.email:
-            lead.channels = [ClientChannel(kind="email", address=lead.email)]
+        lead.channels = [ClientChannel(kind="email", address=lead.email)] if lead.email else []
+        # A client who already pressed «Start» in the bot gets the confirmation there right away
+        # (a bot cannot write first to someone who never started it).
+        lead.channels += [
+            ClientChannel(kind="telegram", address=str(chat_id))
+            for chat_id in await self._known_tg_chats(session, lead)
+        ]
         session.add(lead)
         if idem_key:
             session.add(IdempotencyRecord(key=idem_key, request_hash=request_hash, lead_id=lead_id))
@@ -285,6 +293,15 @@ class LeadService:
         await enqueue_lead_created(session, lead, self.routing)
         await session.commit()
         return lead
+
+    async def _known_tg_chats(self, session: AsyncSession, lead: Lead) -> list[int]:
+        """Bot chats of this client: same @username as typed in the form, or a phone shared via «Contact»."""
+        if not self.routing.telegram_enabled:
+            return []
+        match: list[ColumnElement[bool]] = [(TgClient.phone == lead.phone) & TgClient.phone_verified_at.is_not(None)]
+        if lead.telegram_username:
+            match.append(func.lower(TgClient.username) == lead.telegram_username.lower())
+        return list((await session.scalars(select(TgClient.chat_id).where(or_(*match)).limit(3))).all())
 
     async def create_chat_handoff(
         self,

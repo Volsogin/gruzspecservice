@@ -160,6 +160,37 @@ async def test_start_menu_and_username_autobind(env: Env) -> None:
     assert [b["text"] for b in env.tg.to(CLIENT)[0]["keyboard"][0]] == ["🔎 Найти заявку", "📋 Мои заявки"]
 
 
+async def test_known_client_gets_confirmation_right_after_submit(env: Env) -> None:
+    """Client already started the bot → a new lead with the same @username is confirmed in Telegram at once."""
+    await _bot(env).handle_update(_msg(CLIENT, "/start", username="ivan_driver"))
+    before = len(env.tg.to(CLIENT))
+    lead = await _lead(env, telegram_username="@Ivan_Driver")
+    assert lead["telegram_bound"] is True
+    new = env.tg.to(CLIENT)[before:]
+    assert any(lead["number"] in m["text"] and "принята" in m["text"] for m in new)
+
+    await env.client.post(f"/api/v1/admin/leads/{lead['id']}/status", json={"status": "accepted"}, headers=env.admin)
+    await env.drain()
+    assert any("Принята мастером" in m["text"] for m in env.tg.to(CLIENT))
+
+
+async def test_verified_phone_gets_confirmation_but_typed_username_of_stranger_does_not(env: Env) -> None:
+    bot = _bot(env)
+    await bot.handle_update(_msg(CLIENT, contact={"phone_number": "+79271234567", "user_id": CLIENT}))
+    await bot.handle_update(_msg(OP2, "/start", username="someone_else"))
+    before, other = len(env.tg.to(CLIENT)), len(env.tg.to(OP2))
+    lead = await _lead(env)  # phone +79271234567, no @username
+    assert lead["telegram_bound"] is True
+    assert any(lead["number"] in m["text"] for m in env.tg.to(CLIENT)[before:])
+    assert len(env.tg.to(OP2)) == other
+
+
+async def test_unknown_client_gets_bind_link_only(env: Env) -> None:
+    lead = await _lead(env, telegram_username="@nobody_here")
+    assert lead["telegram_bound"] is False and lead["telegram_bind_url"]
+    assert env.tg.to(CLIENT) == []
+
+
 async def test_client_question_and_operator_reply_roundtrip(env: Env) -> None:
     lead = await _lead(env)
     bot = _bot(env)

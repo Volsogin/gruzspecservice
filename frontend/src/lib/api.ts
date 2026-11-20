@@ -194,6 +194,8 @@ export interface LeadCreated {
   callback_eta_minutes: number;
   message: string;
   telegram_bind_url: string | null;
+  /** The client already talks to the bot: the confirmation was sent there, statuses will follow. */
+  telegram_bound?: boolean;
 }
 
 export interface OrderOut {

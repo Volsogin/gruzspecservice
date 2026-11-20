@@ -58,6 +58,7 @@
 | Версия | Дата | Изменение |
 |---|---|---|
 | 1.0.0 | 2026-11-18 | Первая версия контракта (до получения макетов фронта) |
+| 1.3.0 | 2026-11-20 | `POST /leads`: `telegram_bound` — клиент уже нажимал «Start» в боте (тот же @ник из формы или телефон, подтверждённый кнопкой «Контакт»): заявка сразу привязана к его чату и бот прислал «Заявка принята». Иначе, как раньше, — кнопка `telegram_bind_url` |
 | 1.2.0 | 2026-11-19 | Фронт подключён. `settings/public`: `maps` `{provider, mapgl_key, style}` (ключ MapGL из `DGIS_MAPGL_KEY`), `company.requisites` `{inn, kpp, ogrn, vat}` (пустые не показываются), 9 преимуществ. `orders/{token}`: `summary.vehicle_type_label`, `summary.estimate` теперь полный `{price_from, price_label, breakdown, input}`. `legal/privacy`: `sections[]`. Корпоративная форма: `fleet_size` — выбор из `1-5`, `6-20`, `21-50`, `50+` (было число). Сайт раздаётся тем же сервером: неизвестные пути под `/api`, `/media`, `/admin` — JSON 404, остальные — `index.html` |
 | 1.1.0 | 2026-11-18 | `settings/public` и `bootstrap.settings`: новое поле `telegram_bot` `{username, url}` (или `null`) — ссылка «Написать в Telegram»; подсказка у поля формы `telegram_username` |
 | 1.0.1 | 2026-11-18 | `review_links`: общий флаг `is_placeholder` заменён списком `placeholders` (сейчас `["yandex"]`); ссылка `2gis` ведёт на реальную карточку |

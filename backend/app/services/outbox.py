@@ -21,7 +21,7 @@ from app.core.config import Settings
 from app.db.base import utcnow
 from app.db.models import ChatMessage, Lead, OperatorCard, OutboxMessage, TgRelay
 from app.domain.statuses import status_label
-from app.integrations.notifiers.base import InlineButton, Notifier, OutgoingMessage, SendError
+from app.integrations.notifiers.base import InlineButton, Notifier, OutgoingMessage, SendError, is_public_url
 from app.integrations.notifiers.telegram import TelegramClient
 from app.services import notifications as n
 from app.services.operators import card_buttons
@@ -239,6 +239,16 @@ class OutboxDispatcher:
 
     async def _client_lead_created(self, session: AsyncSession, msg: OutboxMessage) -> None:
         lead = await self._load_lead(session, msg)
+        if msg.channel == "telegram":
+            text = n.render_client_created_telegram(lead, self.settings)
+            tracking = self.settings.tracking_url(lead.public_token)
+            buttons = [[InlineButton("Открыть заявку", url=tracking)]] if is_public_url(tracking) else []
+            await self._notifier("telegram").send(
+                OutgoingMessage(
+                    channel="telegram", recipient=str(msg.payload["to"]), text=text, html=text, buttons=buttons
+                )
+            )
+            return
         company = (await load_settings(session)).company_name
         subject, text, html_body = n.render_client_created(lead, self.settings, company)
         await self._notifier("email").send(

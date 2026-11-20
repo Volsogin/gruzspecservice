@@ -3029,6 +3029,12 @@
               "https://t.me/gruzspec_bot?start=3q2-xYz..."
             ]
           },
+          "telegram_bound": {
+            "type": "boolean",
+            "title": "Telegram Bound",
+            "description": "Клиент уже писал боту (тот же @ник или телефон) — подтверждение ушло в Telegram",
+            "default": false
+          },
           "max_bind_url": {
             "anyOf": [
               {
