@@ -603,7 +603,7 @@ export function Chat() {
     <>
       {!m && !open && (
         <button onClick={openChat} aria-label="Открыть чат" className="hv-accent" style={s('position:fixed;right:16px;bottom:16px;z-index:50;width:111px;height:111px;border-radius:50%;border:0;background:rgb(204,21,23);cursor:pointer;padding:0;box-shadow:0 10px 30px rgba(0,0,0,0.5)')}>
-          <span style={s('position:absolute;left:-22px;top:-26px;width:139px;height:118px;background:url(/assets/mascot-head.webp) center / contain no-repeat')} />
+          <span style={s('position:absolute;left:-22px;top:-16px;width:139px;height:118px;background:url(/assets/mascot-head.webp) center / contain no-repeat')} />
         </button>
       )}
       {open && (
