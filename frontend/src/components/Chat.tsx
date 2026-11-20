@@ -609,7 +609,7 @@ export function Chat() {
       {open && (
         <div role="dialog" aria-label="Чат с помощником" style={sx('position:fixed;z-index:70;top:0;right:0;bottom:0;background:rgb(30,30,30);display:flex;flex-direction:column;font-family:K2D,Jost,sans-serif;color:#fff;box-shadow:-20px 0 60px rgba(0,0,0,0.5);border-left:1px solid rgba(255,255,255,0.08)', { left: m ? 0 : 'auto', width: m ? 'auto' : 420, height: m ? '100dvh' : undefined })}>
           <div style={s('display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;border-bottom:1px solid rgba(255,255,255,0.08)')}>
-            <div style={s('width:44px;height:44px;flex:none;border-radius:50%;background:rgb(204,21,23) url(/assets/mascot-head.webp) center 40% / 125% no-repeat')} />
+            <div style={s('width:44px;height:44px;flex:none;border-radius:50%;background:rgb(204,21,23) url(/assets/mascot-head.webp) 86% 50% / 120% no-repeat')} />
             <div style={s('flex:1;min-width:0;display:flex;flex-direction:column;gap:2px')}>
               <span style={s("font-family:'Josefin Sans',Jost,sans-serif;font-weight:300;font-size:20px;line-height:1.1")}>{head[0]}</span>
               <span style={s('display:flex;align-items:center;gap:6px;font-size:13px;color:rgb(184,184,184)')}>
