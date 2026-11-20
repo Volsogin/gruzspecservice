@@ -308,6 +308,81 @@ export function Home() {
   );
 }
 
+/**
+ * Horizontal review track for a mouse: the scrollbar is hidden and a wheel scrolls the page, so on a desktop
+ * without a touchpad the reviews could not be scrolled at all. Adds ‹ › paging and drag-to-scroll (mouse only;
+ * touch keeps the native swipe).
+ */
+function useReviewTrack(count: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ canPrev: false, canNext: false });
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef<{ x: number; left: number; moved: boolean } | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () =>
+      setEdges({ canPrev: el.scrollLeft > 4, canNext: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro.disconnect();
+    };
+  }, [count]);
+
+  const page = (dir: -1 | 1) => {
+    const el = ref.current;
+    if (!el) return;
+    const card = el.firstElementChild as HTMLElement | null;
+    const step = card ? card.offsetWidth + 16 : el.clientWidth * 0.8;
+    // Whole cards that fit on screen, at least one.
+    const n = Math.max(1, Math.floor((el.clientWidth - 2 * parseFloat(getComputedStyle(el).paddingLeft)) / step));
+    el.scrollBy({ left: dir * n * step, behavior: 'smooth' });
+  };
+
+  const justDragged = useRef(false);
+  const end = () => {
+    if (drag.current?.moved) {
+      justDragged.current = true; // the click event fires right after pointerup
+      setTimeout(() => (justDragged.current = false), 0);
+    }
+    drag.current = null;
+    setDragging(false);
+  };
+
+  const handlers = {
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0 || !ref.current) return;
+      drag.current = { x: e.clientX, left: ref.current.scrollLeft, moved: false };
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+      const d = drag.current;
+      const el = ref.current;
+      if (!d || !el) return;
+      const dx = e.clientX - d.x;
+      if (!d.moved && Math.abs(dx) < 5) return; // a plain click on «Подробнее о ремонте» stays a click
+      if (!d.moved) {
+        d.moved = true;
+        setDragging(true);
+        el.setPointerCapture(e.pointerId);
+      }
+      el.scrollLeft = d.left - dx;
+    },
+    onPointerUp: () => end(),
+    onPointerCancel: () => end(),
+    // Swallow the click that ends a drag, so it does not toggle a case under the cursor.
+    onClickCapture: (e: React.MouseEvent) => {
+      if (justDragged.current) e.stopPropagation();
+    },
+  };
+
+  return { ref, page, handlers, dragging, ...edges };
+}
+
 function Reviews() {
   const { data } = useSite();
   const settings = data?.settings;
@@ -316,6 +391,7 @@ function Reviews() {
   const [cs, setCs] = useState<CaseOut | null>(null);
   const [caseErr, setCaseErr] = useState(false);
   const [cmp, setCmp] = useState(50);
+  const track = useReviewTrack(items.length);
   const summary = data?.reviews.summary;
   const links = summary?.review_links || settings?.review_links || {};
   const placeholders = links.placeholders || [];
@@ -364,6 +440,25 @@ function Reviews() {
           )}
         </div>
         <div style={s('display:flex;flex-wrap:wrap;gap:10px')}>
+          {(track.canPrev || track.canNext) && (
+            <div style={s('display:flex;gap:10px')}>
+              {(['prev', 'next'] as const).map((dir) => {
+                const enabled = dir === 'prev' ? track.canPrev : track.canNext;
+                return (
+                  <button
+                    key={dir}
+                    onClick={() => track.page(dir === 'prev' ? -1 : 1)}
+                    disabled={!enabled}
+                    aria-label={dir === 'prev' ? 'Предыдущие отзывы' : 'Следующие отзывы'}
+                    className={enabled ? 'hv-bd-accent' : undefined}
+                    style={sx('width:48px;height:48px;border-radius:13px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:22px;line-height:1;cursor:pointer', { opacity: enabled ? 1 : 0.35, cursor: enabled ? 'pointer' : 'default' })}
+                  >
+                    {dir === 'prev' ? '‹' : '›'}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {links.yandex && !placeholders.includes('yandex') && (
             <a href={links.yandex} target="_blank" rel="noopener" className="hv-bd-accent" style={s('height:48px;padding:0 18px;border-radius:13px;border:1px solid rgba(255,255,255,0.3);display:flex;align-items:center;gap:8px;font-size:16px')}>
               Отзывы на Яндексе ↗
@@ -376,7 +471,16 @@ function Reviews() {
           )}
         </div>
       </div>
-      <div style={s('display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:4px clamp(16px,7.8vw,112px) 8px')}>
+      <div
+        ref={track.ref}
+        {...track.handlers}
+        style={sx('display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;padding:4px clamp(16px,7.8vw,112px) 8px;scroll-padding:0 clamp(16px,7.8vw,112px)', {
+          // Snapping fights a mouse drag: switch it off while dragging, it re-snaps on release.
+          scrollSnapType: track.dragging ? 'none' : 'x mandatory',
+          cursor: track.canPrev || track.canNext ? (track.dragging ? 'grabbing' : 'grab') : undefined,
+          userSelect: track.dragging ? 'none' : undefined,
+        })}
+      >
         {items.map((r) => (
           <div key={r.id} style={sx('flex:none;width:clamp(290px,26vw,380px);scroll-snap-align:start;display:flex;flex-direction:column;gap:12px;padding:22px;border-radius:23px;background:rgb(30,30,30)', { boxShadow: `inset 0 0 0 1px ${caseId === r.id ? 'rgb(204,21,23)' : 'rgba(255,255,255,0.04)'}` })}>
             <div style={s('display:flex;justify-content:space-between;gap:12px;align-items:flex-start')}>
