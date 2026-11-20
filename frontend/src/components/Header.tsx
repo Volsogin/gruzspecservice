@@ -119,7 +119,7 @@ export function Header() {
           Вызвать мастера
         </button>
         <button onClick={() => { setMenu(false); openChat(); }} style={s('height:52px;border-radius:13px;background:rgb(42,42,42);border:0;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:K2D,Jost,sans-serif;font-size:13px;cursor:pointer;position:relative')}>
-          <span style={s('width:24px;height:24px;border-radius:50%;background:rgb(204,21,23) url(/assets/mascot-head.webp) center 40% / 125% no-repeat')} />
+          <span style={s('width:24px;height:24px;border-radius:50%;background:rgb(204,21,23) url(/assets/mascot-head.webp) 86% 50% / 120% no-repeat')} />
           Чат
         </button>
       </nav>
